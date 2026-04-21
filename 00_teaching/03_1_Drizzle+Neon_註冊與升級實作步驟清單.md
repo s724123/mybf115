@@ -1018,6 +1018,60 @@ bun run db:migrate
 
 目的：分段驗證，避免一次性大改造成難除錯。
 
+### 目前分支進度，對照到哪裡？
+
+若你目前看到的 `feat/v8-drizzle-neon` 狀態，已經具備：
+
+1. `db/schema.ts`
+2. `db/client.ts`
+3. `drizzle.config.ts`
+4. `drizzle/` migration 檔
+5. `store/pg/PgStore.ts`
+6. `store/index.ts` 已能在 JSON / PostgreSQL 之間切換
+7. `bun run db:check` 可以成功
+
+那代表這個分支大致已經完成：
+
+1. Step A：建立保護線
+2. Step B：安裝套件
+3. Step C：建立 Drizzle 基礎檔案
+4. Step D：至少已有第一版 migration 檔
+5. Step E：PgStore 骨架已建立
+
+也就是說，若要從這個狀態繼續往下教，最合理的接續點通常是：
+
+1. 先檢查 `db:generate` / `db:migrate` 的理解是否清楚
+2. 再正式執行 migration
+3. 驗證 PostgreSQL store 是否已覆蓋主要 API 流程
+4. 最後再進資料搬遷與主流量切換
+
+換句話說，這個狀態通常不是「V8 完成」，而是：
+
+- V8 的基礎骨架已經搭好
+- 接下來要進入 migration、驗證與切換階段
+
+### 目前還不算完成的部分
+
+即使已經有：
+
+- `db/schema.ts`
+- `PgStore`
+- `db:check` 成功
+
+仍不代表 V8 已全部完成。
+
+通常還要再確認：
+
+1. `bun run db:migrate` 是否真的已對資料庫執行成功
+2. 主要 API 流程是否已實際走 PostgreSQL
+3. JSON 資料是否已完成搬遷
+4. `STORE_DRIVER` 的切換方式是否符合教學安排
+
+所以這一段最適合在課堂上這樣說：
+
+- 現在不是從零開始建 V8
+- 而是站在「V8 骨架已經完成」的狀態，繼續做後半段整合與驗證
+
 ---
 
 ### 3.6 Step F：資料搬遷（JSON -> PostgreSQL）
