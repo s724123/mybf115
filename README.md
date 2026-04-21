@@ -29,7 +29,35 @@ cp .env.example .env
 PORT=3000
 HOST=localhost
 API_ALLOWED_ORIGIN=
+DATABASE_URL=
+DATABASE_URL_MIGRATION=
+STORE_DRIVER=postgres
 ``` 
+
+## PostgreSQL（Drizzle + Neon）
+
+若要進入 V8 的資料庫升級流程，可在 `.env` 中設定：
+
+```env
+DATABASE_URL=你的_neon_pooled_url
+DATABASE_URL_MIGRATION=你的_neon_direct_url
+STORE_DRIVER=postgres
+```
+
+可先做連線檢查：
+
+```bash
+bun run db:check
+```
+
+接著建立 migration 並套用：
+
+```bash
+bun run db:generate
+bun run db:migrate
+```
+
+若暫時仍要使用 JSON store，可把 `STORE_DRIVER` 改成 `json`。
 
 ## 開發
 
@@ -60,6 +88,7 @@ bun run build
 - 前端輸出：`public/`
 - 後端輸出：`dist/backend.js`
 - 後端會在部署時直接提供 `public/` 內的靜態資產
+- `public/` 目前不追蹤 Git，因此 clone 下來後若要執行整合版，請先跑一次 build
 
 ## 執行後端
 
@@ -67,10 +96,17 @@ bun run build
 bun run start
 ```
 
+若是剛 clone 下來，請先確認已執行：
+
+```bash
+bun run build
+```
+
 啟動後，Elysia 會同時提供：
 
 - Web App：`http://localhost:3000`
 - API：`http://localhost:3000/api/*`
+ 
 
 ## 前端獨立部署
 
