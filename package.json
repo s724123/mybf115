@@ -13,6 +13,7 @@
     "db:check": "bun run ./db/health-check.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate-json": "bun run ./scripts/migrate-json-to-db.ts",
     "build:frontend": "cd frontend && bun run build",
     "build:backend": "bun build ./backend.ts --outdir ./dist",
     "build": "bun run build:frontend && bun run build:backend",

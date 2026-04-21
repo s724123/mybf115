@@ -44,6 +44,11 @@ DATABASE_URL_MIGRATION=你的_neon_direct_url
 STORE_DRIVER=postgres
 ```
 
+V8 分支建議明確使用：
+
+- `STORE_DRIVER=postgres`：走 PostgreSQL / Drizzle
+- `STORE_DRIVER=json`：回退到 JSON store
+
 可先做連線檢查：
 
 ```bash
@@ -58,6 +63,14 @@ bun run db:migrate
 ```
 
 若暫時仍要使用 JSON store，可把 `STORE_DRIVER` 改成 `json`。
+
+若要把 `data/store.json` 匯入 PostgreSQL，可執行：
+
+```bash
+bun run db:migrate-json --reset
+```
+
+`--reset` 會在開發環境清空既有資料表，再重新匯入 JSON 資料。
 
 ## 開發
 

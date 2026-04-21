@@ -15,7 +15,7 @@ export function createStore(options: CreateStoreOptions = {}): Store {
     });
   }
 
-  if (driver === "postgres" || process.env.DATABASE_URL) {
+  if (driver === "postgres") {
     return new PgStore({
       dataFilePath: options.dataFilePath ?? "./data/store.json",
     });

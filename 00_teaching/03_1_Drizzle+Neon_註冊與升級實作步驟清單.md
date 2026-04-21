@@ -1050,6 +1050,22 @@ bun run db:migrate
 - V8 的基礎骨架已經搭好
 - 接下來要進入 migration、驗證與切換階段
 
+若你進一步已完成：
+
+1. `bun run db:migrate`
+2. 啟動後端並用 PostgreSQL store 跑通主要 API
+
+那這個分支就已經不只是在骨架階段，而是已經進入：
+
+- migration 已成功
+- 主要讀寫流程已完成第一輪驗證
+
+這時最合理的接續點通常就是：
+
+1. 補正式的 JSON -> PostgreSQL 搬遷腳本
+2. 驗證搬遷前後資料一致
+3. 定義 `STORE_DRIVER` 的教學預設策略
+
 ### 目前還不算完成的部分
 
 即使已經有：
@@ -1091,6 +1107,18 @@ bun run db:migrate
 3. 任選 3 筆訂單，總金額與項目數一致
 4. 歷史訂單查詢結果一致
 
+若已落地成 package script，可補上：
+
+```bash
+bun run db:migrate-json --reset
+```
+
+建議教學上明確說明：
+
+- `--reset` 代表在開發環境清空既有資料表後重新匯入
+- 這種做法適合課堂示範與重跑驗證
+- 不應直接拿去當正式生產搬遷策略
+
 ---
 
 ### 3.7 Step G：切換 store/index.ts 的實作來源
@@ -1104,6 +1132,16 @@ bun run db:migrate
 
 1. 發生問題可快速切回 JSON
 2. 教學示範可以對照兩種儲存實作
+
+建議這一版明確採用：
+
+- `STORE_DRIVER=postgres`：進入 V8 主流程
+- `STORE_DRIVER=json`：作為教學回退與對照路徑
+
+不建議把「只要偵測到 DATABASE_URL 就自動切 PostgreSQL」當作主要教學行為，因為：
+
+1. 學生較難理解目前到底走哪個 driver
+2. 也不利於示範顯式切換與回退
 
 ---
 
