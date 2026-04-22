@@ -164,7 +164,7 @@ git push origin v7.0.0
 
 - 若 Render 的環境變數畫面有 `Save only`，先用 `Save only`
 - 若沒有 `Save only`，就先把所有設定一次改完，再進行 merge
-- 更保守的做法，是先暫時把 Auto-Deploy 關掉；設定完成後再 merge 或手動 deploy
+- `Auto-Deploy Off` 不建議當成課堂標準步驟，避免學生後續忘記切回 `On Commit` 導致 main 更新卻沒有自動部署；這只適合當成進階保守作法或故障排除手段
 
 ---
 
