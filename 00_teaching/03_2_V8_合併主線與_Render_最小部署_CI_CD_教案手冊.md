@@ -239,8 +239,9 @@ V8 的任務不是重來一次，而是看清楚哪裡和 V7 不同。
 | -------------------------- | -- | ------------------------------------------------------------------------------------------------- |
 | `NODE_ENV`                 | 有 | `production`                                                                                      |
 | `API_ALLOWED_ORIGIN`       | 有 | 前端網址（部署後 Render 提供），初期可先填 `*`                                                    |
+| `STORE_DRIVER`             | 無 | 設成 `postgres`，讓 runtime 實際使用 `PgStore`，而不是 fallback 回 JSON store                    |
 | `DATABASE_URL`             | 無 | Neon 連線 URL，格式：`postgresql://user:pass@ep-xxx.region.aws.neon.tech/dbname?sslmode=require` |
-| `DATABASE_URL_MIGRATION`   | 無 | 若 migration 與 runtime 要分不同 URL，就另外設定；若相同可省略                                    |
+| `DATABASE_URL_MIGRATION`   | 無 | 建議一併設定；若和 `DATABASE_URL` 相同，可先貼同一個值，便於 `db:check` 與部署排錯               |
 
 > **`DATABASE_URL_MIGRATION` 是什麼？**
 >
@@ -251,7 +252,7 @@ V8 的任務不是重來一次，而是看清楚哪裡和 V7 不同。
 >   process.env.DATABASE_URL_MIGRATION ?? process.env.DATABASE_URL;
 > ```
 >
-> 如果 migration 用的連線（通常是 Neon **direct connection**）與 runtime 用的連線（Neon **connection pooler**）不同，就另外設定 `DATABASE_URL_MIGRATION`；若相同則只設 `DATABASE_URL` 即可。
+> 如果 migration 用的連線（通常是 Neon **direct connection**）與 runtime 用的連線（Neon **connection pooler**）不同，就另外設定 `DATABASE_URL_MIGRATION`；若相同，`drizzle-kit migrate` 雖然可直接 fallback 到 `DATABASE_URL`，但教學上仍建議先填同一個值，這樣 `bun run db:check`、課堂排錯與之後切換 direct URL 時都比較一致。
 >
 > Neon 免費帳號的 Direct Connection 與 Pooler URL 可在 Neon Dashboard → Connection Details 各別複製。
 
