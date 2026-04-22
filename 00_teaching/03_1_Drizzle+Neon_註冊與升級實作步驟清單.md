@@ -97,6 +97,7 @@
 在專案根目錄建立或更新 .env：
 
 ```env
+STORE_DRIVER=postgres
 DATABASE_URL=請填入_pooled_url
 DATABASE_URL_MIGRATION=請填入_direct_or_non_pooled_url
 ```
@@ -104,6 +105,7 @@ DATABASE_URL_MIGRATION=請填入_direct_or_non_pooled_url
 另外建立 .env.example（不要放真密碼）：
 
 ```env
+STORE_DRIVER=postgres
 DATABASE_URL=
 DATABASE_URL_MIGRATION=
 ```
