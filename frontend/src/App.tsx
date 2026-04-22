@@ -57,7 +57,7 @@ export default function App() {
     setCartTotal(0);
   }
 
-  async function loadCurrentOrder(targetUserId: number): Promise<void> {
+  async function loadCurrentOrder(targetUserId: number): Promise<Order | null> {
     const response = await fetch(
       buildApiUrl(`/api/orders/current?userId=${targetUserId}`),
     );
@@ -71,11 +71,12 @@ export default function App() {
 
     if (!currentOrder) {
       resetCartState();
-      return;
+      return null;
     }
 
     setOrderId(currentOrder.id);
     syncCartFromOrder(currentOrder);
+    return currentOrder;
   }
 
   async function loadOrderHistory(targetUserId: number): Promise<void> {
@@ -234,6 +235,16 @@ export default function App() {
     });
 
     if (!response.ok) {
+      if ([401, 403, 404].includes(response.status)) {
+        window.localStorage.removeItem(USER_STORAGE_KEY);
+        setUser(null);
+        setAuthError("登入狀態已失效，請重新登入。");
+        setActionError("登入狀態已失效，請重新登入。");
+        setHistoryOrders([]);
+        resetCartState();
+        throw new Error(`Auth expired: HTTP ${response.status}`);
+      }
+
       throw new Error(`Create order failed: HTTP ${response.status}`);
     }
 
@@ -334,6 +345,28 @@ export default function App() {
 
       syncCartFromOrder(updatedOrder);
     } catch (cartError) {
+      if (
+        cartError instanceof Error &&
+        cartError.message.startsWith("Auth expired:")
+      ) {
+        return;
+      }
+
+      if (user) {
+        try {
+          const recoveredOrder = await loadCurrentOrder(user.id);
+          const recoveredQty = recoveredOrder?.items.find(
+            (orderItem) => orderItem.item.id === item.id,
+          )?.qty;
+
+          if (typeof recoveredQty === "number" && recoveredQty > 0) {
+            return;
+          }
+        } catch (recoveryError) {
+          console.error(recoveryError);
+        }
+      }
+
       setActionError("加入購物車失敗，請稍後再試。");
       console.error(cartError);
     } finally {
