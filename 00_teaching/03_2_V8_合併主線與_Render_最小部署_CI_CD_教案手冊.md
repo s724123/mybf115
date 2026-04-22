@@ -180,7 +180,7 @@ V7 已做過第一次完整部署，因此這一段不再重講 Render 基本操
 
 1. 保留 V7 已有的 Render Web Service
 2. 更新 Build Command
-3. 補上 Neon `DATABASE_URL` 等環境變數
+3. 補上 `STORE_DRIVER=postgres`、`DATABASE_URL`、`DATABASE_URL_MIGRATION` 等 V8 環境變數
 4. 設定完成後，再把 `feat/v8-drizzle-neon` merge 回 `main`
 5. 由 `main` 觸發部署並驗證健康檢查、核心 API 與 migration
 6. 部署成功後，再打 `v8.0.0` tag
@@ -257,6 +257,7 @@ V8 的任務不是重來一次，而是看清楚哪裡和 V7 不同。
 - 若畫面有 `Save only`，這一步先選 `Save only`
 - 目的不是立刻部署，而是先把 V8 所需設定準備好
 - 等下面真的 merge 到 `main` 時，再讓 Render 用正確設定自動部署
+- 其中 `STORE_DRIVER=postgres` 不能漏，否則 runtime 仍可能 fallback 回 JSON store
 
 ---
 
@@ -319,6 +320,7 @@ git push origin v8.0.0
 
 | 症狀                           | 可能原因                                                        | 解法                                                                                 |
 | ------------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Build 成功但資料仍寫進 JSON    | 少了 `STORE_DRIVER=postgres`，runtime 仍使用 JSON store         | 在 Render 補上 `STORE_DRIVER=postgres`，重新部署後再驗證                             |
 | `DATABASE_URL is not set`      | 環境變數未設定                                                  | 補上 `DATABASE_URL`                                                                  |
 | `drizzle-kit migrate` 失敗     | Neon URL 格式錯誤，或 SSL 未啟用                                | 確認 URL 包含 `?sslmode=require`                                                     |
 | migration 卡住或連不到資料庫 | `DATABASE_URL_MIGRATION` 貼錯，或 direct / pooled URL 用反      | 優先回到 Neon Dashboard 重新比對兩條 URL                                             |
