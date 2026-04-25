@@ -1,19 +1,22 @@
 import {
   integer,
-  pgTable,
+  pgSchema,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export const usersTable = pgTable("users", {
+// PostgreSQL namespace（schema）隔離
+const appSchema = pgSchema("breakfast");
+
+export const usersTable = appSchema.table("users", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   password: text("password").notNull(),
 });
 
-export const menuItemsTable = pgTable("menu_items", {
+export const menuItemsTable = appSchema.table("menu_items", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   name: text("name").notNull(),
   price: integer("price").notNull(),
@@ -22,7 +25,7 @@ export const menuItemsTable = pgTable("menu_items", {
   imageUrl: text("image_url").notNull(),
 });
 
-export const ordersTable = pgTable("orders", {
+export const ordersTable = appSchema.table("orders", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   userId: integer("user_id")
     .notNull()
@@ -33,7 +36,7 @@ export const ordersTable = pgTable("orders", {
   submittedAt: timestamp("submitted_at", { withTimezone: true }),
 });
 
-export const orderItemsTable = pgTable(
+export const orderItemsTable = appSchema.table(
   "order_items",
   {
     id: integer("id").primaryKey().generatedByDefaultAsIdentity(),

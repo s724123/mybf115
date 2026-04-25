@@ -59,7 +59,7 @@ async function ensureSafeToImport(resetMode: boolean) {
 
   if (resetMode) {
     await db.execute(
-      sql`truncate table order_items, orders, menu_items, users restart identity cascade`,
+      sql`truncate table breakfast.order_items, breakfast.orders, breakfast.menu_items, breakfast.users restart identity cascade`,
     );
   }
 }
@@ -118,16 +118,16 @@ async function importSeedData(seed: SeedData) {
   }
 
   await db.execute(
-    sql`select setval('users_id_seq', coalesce((select max(id) from users), 1), true)`,
+    sql`select setval('breakfast.users_id_seq', coalesce((select max(id) from breakfast.users), 1), true)`,
   );
   await db.execute(
-    sql`select setval('menu_items_id_seq', coalesce((select max(id) from menu_items), 1), true)`,
+    sql`select setval('breakfast.menu_items_id_seq', coalesce((select max(id) from breakfast.menu_items), 1), true)`,
   );
   await db.execute(
-    sql`select setval('orders_id_seq', coalesce((select max(id) from orders), 1), true)`,
+    sql`select setval('breakfast.orders_id_seq', coalesce((select max(id) from breakfast.orders), 1), true)`,
   );
   await db.execute(
-    sql`select setval('order_items_id_seq', coalesce((select max(id) from order_items), 1), true)`,
+    sql`select setval('breakfast.order_items_id_seq', coalesce((select max(id) from breakfast.order_items), 1), true)`,
   );
 }
 
@@ -151,8 +151,12 @@ async function verifyImport(seed: SeedData) {
   );
 
   console.log("JSON -> PostgreSQL migration summary:");
-  console.log(`users: ${seed.users.length} -> ${Number(usersCountRow?.value ?? 0)}`);
-  console.log(`menu: ${seed.menu.length} -> ${Number(menuCountRow?.value ?? 0)}`);
+  console.log(
+    `users: ${seed.users.length} -> ${Number(usersCountRow?.value ?? 0)}`,
+  );
+  console.log(
+    `menu: ${seed.menu.length} -> ${Number(menuCountRow?.value ?? 0)}`,
+  );
   console.log(
     `orders: ${seed.orders.length} -> ${Number(ordersCountRow?.value ?? 0)}`,
   );
