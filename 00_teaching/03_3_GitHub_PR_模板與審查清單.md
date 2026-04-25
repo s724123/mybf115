@@ -104,3 +104,44 @@ PM/PO 至少確認：
 3. CI 狀態全綠
 
 若任一項未完成，PR 仍維持 open。
+
+---
+
+## 6. GitHub PR 通知說明（「Compare & pull request」）
+
+### 現象
+
+當你把新分支 push 到 GitHub 時，repo 首頁會出現通知：
+
+```
+feat/v8-clean-drizzle-neon had recent pushes 11 minutes ago
+[Compare & pull request]
+```
+
+### 這是什麼意思
+
+GitHub 自動偵測到：
+
+- 新分支有最近的 commit
+- 它與 default branch（`main`）有差異
+
+GitHub 的設計是主動提醒：「這個分支與主線不同，你可能想要建立 **PR** 來檢視差異或合併。」
+
+### 這不是錯誤
+
+這是 GitHub 正常的協作機制，鼓勵 Code Review 流程。在團隊開發中很有用，但在個人專案可以忽視。
+
+### 讓通知消失的方式
+
+| 方式            | 說明                                                  | 適用情況                      |
+| --------------- | ----------------------------------------------------- | ----------------------------- |
+| **什麼都不做**  | 幾天後自動消失（GitHub 只保留最近活動的通知）         | ✅ 推薦（開發中的分支用）     |
+| **建立 PR**     | 點「Compare & pull request」開 PR                     | 準備好做 code review 或合併時 |
+| **刪除分支**    | `git push origin --delete feat/v8-clean-drizzle-neon` | 不需要保留時                  |
+| **合併到 main** | 在 PR 裡 merge                                        | 功能完成且通過檢視時          |
+
+### 目前推薦做法（開發階段）
+
+如果分支仍在開發中（如 `feat/v8-clean-drizzle-neon` 尚未完成）：
+
+**推薦：什麼都不做。** GitHub 會自動在幾天後收起通知。當功能完成且準備好合併時，才建立 PR 進行正式 code review 與合併。
