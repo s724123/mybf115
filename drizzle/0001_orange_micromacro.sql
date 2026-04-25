@@ -36,10 +36,14 @@ CREATE TABLE "breakfast"."users" (
 	CONSTRAINT "users_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-DROP TABLE "menu_items" CASCADE;--> statement-breakpoint
-DROP TABLE "order_items" CASCADE;--> statement-breakpoint
-DROP TABLE "orders" CASCADE;--> statement-breakpoint
-DROP TABLE "users" CASCADE;--> statement-breakpoint
+-- NOTE: Expand-Contract 模式 — 不在此處刪除 public schema 的舊資料表。
+-- 舊版 V8 仍可透過 public schema 存取資料，以便比較新舊行為。
+-- 確認 breakfast schema 穩定後，再另建 0002_cleanup_public_tables.sql 執行刪除。
+-- DROP TABLE "menu_items" CASCADE;
+-- DROP TABLE "order_items" CASCADE;
+-- DROP TABLE "orders" CASCADE;
+-- DROP TABLE "users" CASCADE;
+--> statement-breakpoint
 ALTER TABLE "breakfast"."order_items" ADD CONSTRAINT "order_items_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "breakfast"."orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "breakfast"."orders" ADD CONSTRAINT "orders_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "breakfast"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "order_items_order_item_idx" ON "breakfast"."order_items" USING btree ("order_id","item_id");
