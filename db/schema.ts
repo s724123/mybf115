@@ -7,7 +7,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 // PostgreSQL namespace（schema）隔離
-const appSchema = pgSchema("breakfast");
+// 透過 PG_SCHEMA 環境變數切換，預設為 "public"（舊 V8 行為）
+const appSchema = pgSchema(process.env.PG_SCHEMA ?? "public");
 
 export const usersTable = appSchema.table("users", {
   id: integer("id").primaryKey().generatedByDefaultAsIdentity(),

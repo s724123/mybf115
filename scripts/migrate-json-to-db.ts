@@ -58,8 +58,11 @@ async function ensureSafeToImport(resetMode: boolean) {
   }
 
   if (resetMode) {
+    const schema = process.env.PG_SCHEMA ?? "public";
     await db.execute(
-      sql`truncate table breakfast.order_items, breakfast.orders, breakfast.menu_items, breakfast.users restart identity cascade`,
+      sql.raw(
+        `truncate table ${schema}.order_items, ${schema}.orders, ${schema}.menu_items, ${schema}.users restart identity cascade`,
+      ),
     );
   }
 }
@@ -117,17 +120,26 @@ async function importSeedData(seed: SeedData) {
     }
   }
 
+  const schema = process.env.PG_SCHEMA ?? "public";
   await db.execute(
-    sql`select setval('breakfast.users_id_seq', coalesce((select max(id) from breakfast.users), 1), true)`,
+    sql.raw(
+      `select setval('${schema}.users_id_seq', coalesce((select max(id) from ${schema}.users), 1), true)`,
+    ),
   );
   await db.execute(
-    sql`select setval('breakfast.menu_items_id_seq', coalesce((select max(id) from breakfast.menu_items), 1), true)`,
+    sql.raw(
+      `select setval('${schema}.menu_items_id_seq', coalesce((select max(id) from ${schema}.menu_items), 1), true)`,
+    ),
   );
   await db.execute(
-    sql`select setval('breakfast.orders_id_seq', coalesce((select max(id) from breakfast.orders), 1), true)`,
+    sql.raw(
+      `select setval('${schema}.orders_id_seq', coalesce((select max(id) from ${schema}.orders), 1), true)`,
+    ),
   );
   await db.execute(
-    sql`select setval('breakfast.order_items_id_seq', coalesce((select max(id) from breakfast.order_items), 1), true)`,
+    sql.raw(
+      `select setval('${schema}.order_items_id_seq', coalesce((select max(id) from ${schema}.order_items), 1), true)`,
+    ),
   );
 }
 
