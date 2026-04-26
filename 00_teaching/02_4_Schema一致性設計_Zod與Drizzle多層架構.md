@@ -337,11 +337,11 @@ app.post("/api/orders", handler, {
 
 ## 7. 遷移時間表
 
-| 版本                              | 任務                                             | 優先度 | 狀態  |
-| --------------------------------- | ------------------------------------------------ | ------ | ----- |
-| V8（feat/v8-clean-drizzle-neon）  | 補齊 Elysia schema，固定 API contract            | 🔴 高  | ✅ 完成 |
+| 版本                                   | 任務                                               | 優先度 | 狀態    |
+| -------------------------------------- | -------------------------------------------------- | ------ | ------- |
+| V8（feat/v8-clean-drizzle-neon）       | 補齊 Elysia schema，固定 API contract              | 🔴 高  | ✅ 完成 |
 | V8-v2（feat/v8-clean-drizzle-neon-v2） | 遷移 contracts.ts 至 Zod，移除 backend.ts 重複定義 | 🟡 中  | ✅ 完成 |
-| V9                                | 整合 Better Auth，搭配 Zod 架構                  | 🟢 低  | ⏳ 待做 |
+| V9                                     | 整合 Better Auth，搭配 Zod 架構                    | 🟢 低  | ⏳ 待做 |
 
 ---
 
@@ -371,7 +371,7 @@ app.post("/api/orders", handler, {
 
 **實作日期**：2026-04-26  
 **分支**：`feat/v8-clean-drizzle-neon-v2`（從 `feat/v8-clean-drizzle-neon` 切出）  
-**異動檔案**：只動了 `shared/contracts.ts` 與 `backend.ts` 兩個檔案  
+**異動檔案**：只動了 `shared/contracts.ts` 與 `backend.ts` 兩個檔案
 
 ### 10.1 shared/contracts.ts 的改造
 
@@ -427,13 +427,15 @@ export type SessionUser = z.infer<typeof sessionUserSchema>;
 
 ```ts
 // backend.ts 本地定義（重複）
-const safeUserSchema = t.Object({         // ← 重複 SessionUser
+const safeUserSchema = t.Object({
+  // ← 重複 SessionUser
   id: t.String({ minLength: 1 }),
   email: t.String({ minLength: 3 }),
   name: t.String({ minLength: 1 }),
 });
 
-const menuItemSchema = t.Object({         // ← 重複 MenuItem
+const menuItemSchema = t.Object({
+  // ← 重複 MenuItem
   id: t.Number({ minimum: 1 }),
   name: t.String({ minLength: 1 }),
   price: t.Number({ minimum: 0 }),
@@ -450,15 +452,15 @@ import {
   sessionUserSchema,
   orderResponseSchema,
   apiErrorResponseSchema,
-} from "./shared/contracts.ts";           // ← 從 single source import
+} from "./shared/contracts.ts"; // ← 從 single source import
 
 // 只定義「包裝結構」，不定義業務型別
 const loginResponseSchema = z.object({
-  data: sessionUserSchema,                // ← 直接用，不重複定義
+  data: sessionUserSchema, // ← 直接用，不重複定義
 });
 
 const menuItemResponseSchema = z.object({
-  data: menuItemSchema,                   // ← 直接用，不重複定義
+  data: menuItemSchema, // ← 直接用，不重複定義
 });
 ```
 
@@ -468,13 +470,13 @@ const menuItemResponseSchema = z.object({
 
 ### 11.1 程式碼量（Schema 相關）
 
-| 指標 | V1（feat/v8-clean-drizzle-neon） | V2（feat/v8-clean-drizzle-neon-v2） | 差異 |
-|------|----------------------------------|--------------------------------------|------|
-| `shared/contracts.ts` schema 行數 | ~45 行（純 interface） | ~60 行（Zod schemas + derived types） | +15 行 |
-| `backend.ts` 業務 schema 行數 | ~58 行（8 個 t.Object 業務定義） | **0 行**（全部 import） | -58 行 |
-| `backend.ts` envelope schema 行數 | ~28 行（7 個 t.Object envelope） | ~28 行（7 個 z.object envelope） | 相同 |
-| **Schema 相關總行數** | **~131 行** | **~88 行** | **-43 行（-33%）** |
-| **重複定義的業務型別數** | **8 個（contracts + backend 各一份）** | **0 個** | **-8 個** |
+| 指標                              | V1（feat/v8-clean-drizzle-neon）       | V2（feat/v8-clean-drizzle-neon-v2）   | 差異               |
+| --------------------------------- | -------------------------------------- | ------------------------------------- | ------------------ |
+| `shared/contracts.ts` schema 行數 | ~45 行（純 interface）                 | ~60 行（Zod schemas + derived types） | +15 行             |
+| `backend.ts` 業務 schema 行數     | ~58 行（8 個 t.Object 業務定義）       | **0 行**（全部 import）               | -58 行             |
+| `backend.ts` envelope schema 行數 | ~28 行（7 個 t.Object envelope）       | ~28 行（7 個 z.object envelope）      | 相同               |
+| **Schema 相關總行數**             | **~131 行**                            | **~88 行**                            | **-43 行（-33%）** |
+| **重複定義的業務型別數**          | **8 個（contracts + backend 各一份）** | **0 個**                              | **-8 個**          |
 
 > **結論**：V2 的 schema 相關程式碼減少約 1/3，且消除所有重複。
 
@@ -508,12 +510,12 @@ const menuItemResponseSchema = z.object({
 
 **情境：MenuItem 新增 `available: boolean` 欄位**
 
-| 步驟 | V1 需要做 | V2 需要做 |
-|------|-----------|----------|
-| 1 | 改 `contracts.ts` interface | 改 `contracts.ts` Zod schema |
-| 2 | ⚠️ 手動改 `backend.ts` menuItemSchema | ✅ 不需要（自動同步） |
-| 3 | 記住 frontend 也用同一份 | 前端 `import { MenuItem }` 自動更新 |
-| **出錯風險** | 忘記改 backend.ts → 型別不一致、OpenAPI 文件錯誤 | 無 |
+| 步驟         | V1 需要做                                        | V2 需要做                           |
+| ------------ | ------------------------------------------------ | ----------------------------------- |
+| 1            | 改 `contracts.ts` interface                      | 改 `contracts.ts` Zod schema        |
+| 2            | ⚠️ 手動改 `backend.ts` menuItemSchema            | ✅ 不需要（自動同步）               |
+| 3            | 記住 frontend 也用同一份                         | 前端 `import { MenuItem }` 自動更新 |
+| **出錯風險** | 忘記改 backend.ts → 型別不一致、OpenAPI 文件錯誤 | 無                                  |
 
 **情境：發現 SessionUser 欄位有錯誤**
 
@@ -527,18 +529,18 @@ const menuItemResponseSchema = z.object({
 
 這次實作確認了以下技術事實（2026-04-26 驗證）：
 
-| 驗證項目 | 結果 |
-|---------|------|
-| Elysia 1.4.28 接受 Zod 4 schema | ✅ 支援（Standard Schema V1 介面） |
-| Zod 4 實作 `~standard` 介面 | ✅ 已確認 |
-| OpenAPI 文件仍然正確生成 | ✅ `/openapi` 端點正常 |
-| 運行時驗證（缺欄位回錯誤） | ✅ 正確觸發 validation error |
-| `STORE_DRIVER=json` smoke test | ✅ login、menu、validation error 全通過 |
-| DB/Auth 層完全不動 | ✅ 零改動 |
+| 驗證項目                        | 結果                                    |
+| ------------------------------- | --------------------------------------- |
+| Elysia 1.4.28 接受 Zod 4 schema | ✅ 支援（Standard Schema V1 介面）      |
+| Zod 4 實作 `~standard` 介面     | ✅ 已確認                               |
+| OpenAPI 文件仍然正確生成        | ✅ `/openapi` 端點正常                  |
+| 運行時驗證（缺欄位回錯誤）      | ✅ 正確觸發 validation error            |
+| `STORE_DRIVER=json` smoke test  | ✅ login、menu、validation error 全通過 |
+| DB/Auth 層完全不動              | ✅ 零改動                               |
 
 ### 11.5 一句話結論
 
 > **V1 的 contracts.ts 是「型別的聲明」，只有 TypeScript 讀它。**  
-> **V2 的 contracts.ts 是「型別與規則的唯一真相」，TypeScript 和運行時都讀它。**  
+> **V2 的 contracts.ts 是「型別與規則的唯一真相」，TypeScript 和運行時都讀它。**
 >
 > 心智負擔的根源是「人腦需要記住多份定義之間的同步關係」。V2 把這個責任還給 compiler 和 runtime，不再靠人腦記憶。
