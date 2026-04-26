@@ -2,8 +2,8 @@
 
 建議前置閱讀：
 
-- [03_為什麼這個專案選 Drizzle + Neon.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_為什麼這個專案選 Drizzle + Neon.md:1)
-- [03_1_Drizzle+Neon_註冊與升級實作步驟清單.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_1_Drizzle+Neon_註冊與升級實作步驟清單.md:1)
+- [03_為什麼這個專案選 Drizzle + Neon.md](/root/00*nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03*為什麼這個專案選 Drizzle + Neon.md:1)
+- [03*1_Drizzle+Neon*註冊與升級實作步驟清單.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_1_Drizzle+Neon_註冊與升級實作步驟清單.md:1)
 
 這份清單現在的前提已經改變。
 
@@ -22,6 +22,29 @@
 - V7 結尾先做第一次完整部署
 - V8 完成後補資料庫版部署調整
 - 這份 V9 講義完成後，也應再補一次 auth 版部署調整，而不是把部署獨立拖到最後才講
+
+---
+
+## 0. 為什麼現在要導入 Better Auth（來自真實問題，而非功能堆疊）
+
+在 V8 實作與測試階段，我們遇到一個典型症狀：
+
+1. 切換帳號後，前端偶發沿用舊 `orderId` 發送更新。
+2. 後端因此回傳 `403 ORDER_NOT_OWNED` 或 `404`。
+3. 需要前端額外補「錯誤後重抓訂單再重試」的保護邏輯。
+
+這個事件的教學意義是：
+
+1. 只靠前端管理 `localStorage user` 與本地 state，無法可靠承擔 session 一致性責任。
+2. 目前修補可止血，但本質仍是過渡方案，不是長期架構。
+3. 真正的解法是把「誰是當前使用者」交回 server session，讓權限判斷在後端封口。
+
+因此，導入 Better Auth 的核心理由不是「多一個 Google 登入按鈕」，而是：
+
+> 把系統從示範型登入流程，升級為可持續維護的 session 驗證架構，
+> 讓身份來源、權限邊界與資料歸屬三者一致。
+
+換句話說，V9 的價值是「降低狀態競態與信任邊界錯置」，而不只是「登入方式更漂亮」。
 
 ---
 
@@ -546,4 +569,4 @@
 
 延伸閱讀：
 
-- [91_V5_V6_差異與決策說明.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/91_V5_V6_差異與決策說明.md:1)
+- [91*V5_V6*差異與決策說明.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/91_V5_V6_差異與決策說明.md:1)
