@@ -24,28 +24,34 @@
 5. [02_1_從目前 backend.ts 補齊 Elysia route schema 的實作步驟清單.md](/root/00*nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/02_1*從目前 backend.ts 補齊 Elysia route schema 的實作步驟清單.md:1)
    把 API contract truth 真正落到 route schema。
 
-6. [02_2_導入 OpenAPI ／ Swagger 輸出.md](/root/00*nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/02_2*導入 OpenAPI ／ Swagger 輸出.md:1)
+6. [02_4_Schema一致性設計\_Zod與Drizzle多層架構.md](./02_4_Schema一致性設計_Zod與Drizzle多層架構.md)
+   解決 schema 散落三個地方的問題；討論為什麼 Drizzle schema 不該是 API contract 的 single source，以及如何用 Zod 統一業務層定義。
+
+7. [02_2_導入 OpenAPI ／ Swagger 輸出.md](/root/00*nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/02_2*導入 OpenAPI ／ Swagger 輸出.md:1)
    把 route schema 輸出成可閱讀、可驗證的 API 文件。
 
-7. [02*3_V7_Render*首次部署教案手冊.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/02_3_V7_Render_首次部署教案手冊.md:1)
+8. [02*3_V7_Render*首次部署教案手冊.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/02_3_V7_Render_首次部署教案手冊.md:1)
    在 V7 結尾先完成第一次 Render 部署，建立平台操作感與驗證習慣。
 
-8. [03_為什麼這個專案選 Drizzle + Neon.md](/root/00*nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03*為什麼這個專案選 Drizzle + Neon.md:1)
-   說明為什麼資料層升級選擇 `Drizzle + Neon`。
+9. [02*3_V7_Render*首次部署教案手冊.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/02_3_V7_Render_首次部署教案手冊.md:1)
+   在 V7 結尾先完成第一次 Render 部署，建立平台操作感與驗證習慣。
 
-9. [03*1_Drizzle+Neon*註冊與升級實作步驟清單.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_1_Drizzle+Neon_註冊與升級實作步驟清單.md:1)
-   正式進入 V8 的資料庫升級實作。
+10. [03_為什麼這個專案選 Drizzle + Neon.md](/root/00*nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03*為什麼這個專案選 Drizzle + Neon.md:1)
+    說明為什麼資料層升級選擇 `Drizzle + Neon`。
 
-10. [03*2_V8*合併主線與*Render*最小部署*CI_CD*教案手冊.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_2_V8_合併主線與_Render_最小部署_CI_CD_教案手冊.md:1)
+11. [03*1_Drizzle+Neon*註冊與升級實作步驟清單.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_1_Drizzle+Neon_註冊與升級實作步驟清單.md:1)
+    正式進入 V8 的資料庫升級實作。
+
+12. [03*2_V8*合併主線與*Render*最小部署*CI_CD*教案手冊.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_2_V8_合併主線與_Render_最小部署_CI_CD_教案手冊.md:1)
     在 V8 完成後，補講「相對 V7 多了哪些部署調整」，並建立 V8 的主線治理與 CI/CD。
 
-11. [03*3_GitHub_PR*模板與審查清單.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_3_GitHub_PR_模板與審查清單.md:1)
+13. [03*3_GitHub_PR*模板與審查清單.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_3_GitHub_PR_模板與審查清單.md:1)
     提供課堂可直接套用的 PR 描述格式與審查流程。
 
-12. [03*4_V8*合併與部署\_課堂評分Rubric.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_4_V8_合併與部署_課堂評分Rubric.md:1)
+14. [03*4_V8*合併與部署\_課堂評分Rubric.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/03_4_V8_合併與部署_課堂評分Rubric.md:1)
     提供助教評分標準，讓流程能力與 V8 的部署調整結果都可量化評估。
 
-13. [04_Elysia + Better Auth + Google provider 實作步驟清單.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/04_Elysia + Better Auth + Google provider 實作步驟清單.md:1)
+15. [04_Elysia + Better Auth + Google provider 實作步驟清單.md](/root/00_nsPrj/01_backEnd/06_elysia/00_demo01/00_teaching/04_Elysia + Better Auth + Google provider 實作步驟清單.md:1)
     當 V8 完成後，再進入 V9 的 auth 升級；完成後也應再補一次本版部署調整。
 
 ---
@@ -81,14 +87,17 @@
 
 以下是本課程中重複出現的核心決策，可跨講義查找：
 
-| 決策主題                                     | 對應講義             |
-| -------------------------------------------- | -------------------- |
-| API contract single source of truth          | `02_0`               |
-| 型別語意精確（SessionUser）與三層同步策略    | `02_0` § 3-1、3-2    |
-| 新舊 V7 架構對照與五大決策原則               | `04_2`               |
-| 後端設計品質決定前端能做什麼                 | `04_2` § 7           |
-| V7→V8→V9 升級路徑與實作紀錄                  | `04_1`               |
-| 切新 branch 做改造（feat/v8-namespace 策略） | `04_1` 實作紀錄 #004 |
+| 決策主題                                      | 對應講義             |
+| --------------------------------------------- | -------------------- |
+| API contract single source of truth           | `02_0`               |
+| 型別語意精確（SessionUser）與三層同步策略     | `02_0` § 3-1、3-2    |
+| **Schema 一致性：Zod vs Drizzle 多層架構**    | **`02_4`**           |
+| **為什麼 Drizzle 不該是 API contract source** | **`02_4` § 2**       |
+| **正確的三層分工：Business / API / DB 層**    | **`02_4` § 3**       |
+| 新舊 V7 架構對照與五大決策原則                | `04_2`               |
+| 後端設計品質決定前端能做什麼                  | `04_2` § 7           |
+| V7→V8→V9 升級路徑與實作紀錄                   | `04_1`               |
+| 切新 branch 做改造（feat/v8-namespace 策略）  | `04_1` 實作紀錄 #004 |
 
 ---
 
