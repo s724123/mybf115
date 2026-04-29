@@ -1544,7 +1544,9 @@ BETTER_AUTH_URL=https://<your-service>.onrender.com
 核對片段（概念）：
 
 ```ts
-const isGoogleProviderConfigured = Boolean(googleClientId && googleClientSecret);
+const isGoogleProviderConfigured = Boolean(
+  googleClientId && googleClientSecret,
+);
 
 export const auth = betterAuth({
   // ...
@@ -1552,7 +1554,10 @@ export const auth = betterAuth({
   ...(isGoogleProviderConfigured
     ? {
         socialProviders: {
-          google: { clientId: googleClientId!, clientSecret: googleClientSecret! },
+          google: {
+            clientId: googleClientId!,
+            clientSecret: googleClientSecret!,
+          },
         },
       }
     : {}),
@@ -1576,7 +1581,9 @@ async function handleGoogleSignIn(): Promise<void> {
   setIsGoogleSigningIn(true);
   try {
     const callbackURL = window.location.origin;
-    window.location.href = buildApiUrl(`/api/auth/sign-in/social?provider=google&callbackURL=${encodeURIComponent(callbackURL)}`);
+    window.location.href = buildApiUrl(
+      `/api/auth/sign-in/social?provider=google&callbackURL=${encodeURIComponent(callbackURL)}`,
+    );
   } catch {
     setAuthError("Google 登入啟動失敗，請稍後再試。");
     setIsGoogleSigningIn(false);
@@ -1666,3 +1673,87 @@ git push origin feat/v9-clean-better-auth-v2
 1. 學生是否遵守「先文件、後操作」流程
 2. Google 入口是否與既有帳密流程並存且互不破壞
 3. 是否能用可重現指令完成 build、驗收、回滾
+
+---
+
+## 實作紀錄（Phase 9 第一子階段）
+
+> commits: `7d0212a`（env guard scaffold）、`c584cb7`（Google 按鈕 + 導流）  
+> 分支：`feat/v9-clean-better-auth-v2`
+
+### 已完成項目
+
+#### 1. 後端 env guard（`auth/better-auth.ts`）
+
+新增 `isGoogleProviderConfigured` 旗標：兩個 env 都存在才啟用 Google socialProvider；缺任何一個則維持 email/password only。  
+好處：學生不必先設定 Google Console 就能讓 build 通過。
+
+```ts
+const isGoogleProviderConfigured = Boolean(googleClientId && googleClientSecret);
+
+...(isGoogleProviderConfigured
+  ? { socialProviders: { google: { clientId: googleClientId!, clientSecret: googleClientSecret! } } }
+  : {}),
+```
+
+#### 2. 前端 Google 登入入口（`frontend/src/App.tsx`）
+
+新增三項：
+
+| 項目                      | 說明                                                               |
+| ------------------------- | ------------------------------------------------------------------ |
+| `isGoogleSigningIn` state | 控制按鈕 loading 狀態與防重複點擊                                  |
+| `handleGoogleSignIn()`    | 組出 redirect URL，導向 `/api/auth/sign-in/social?provider=google` |
+| Google 按鈕               | 放在帳密按鈕下方，`<div className="divider">` 視覺分隔             |
+
+防重複點擊設計：兩個按鈕互鎖—帳密登入進行中時 Google 按鈕也 disabled，反之亦然。
+
+```ts
+async function handleGoogleSignIn(): Promise<void> {
+  setAuthError("");
+  setIsGoogleSigningIn(true);
+  try {
+    const callbackURL = window.location.origin;
+    window.location.href = buildApiUrl(
+      `/api/auth/sign-in/social?provider=google&callbackURL=${encodeURIComponent(callbackURL)}`,
+    );
+  } catch {
+    setAuthError("Google 登入啟動失敗，請稍後再試。");
+    setIsGoogleSigningIn(false);
+  }
+}
+```
+
+#### 3. 設計決策說明
+
+**為什麼用 `window.location.href` 而不是 fetch？**  
+Google OAuth 流程是 redirect-based：Better Auth 回 `302 redirect → Google 同意頁 → callback`。  
+fetch 會在 redirect 時受 CORS 限制，且無法讓瀏覽器跟著跳轉。用 `window.location.href` 直接改變頁面 URL，才能正確觸發 OAuth 流程。
+
+**callbackURL 的作用？**  
+OAuth 完成後 Better Auth 把使用者重導回這個 URL。這裡傳 `window.location.origin`（如 `https://xxxx.onrender.com`），代表「完成後回站台首頁」。
+
+**Google Console 必設的 Authorized redirect URI 格式**：
+
+```
+https://<your-service>.onrender.com/api/auth/callback/google
+http://localhost:3000/api/auth/callback/google   ← 本機開發
+```
+
+### 手動驗收確認（照下列順序操作）
+
+1. `bun run build` 無錯誤
+2. 啟動後端：`bun run backend.ts`
+3. 開瀏覽器前往 `http://localhost:3000`
+4. 登入頁可看到「登入」與「使用 Google 登入」兩個按鈕，分隔線在中間
+5. 原有帳密登入仍正常
+6. 點 Google 按鈕 → 若 env 設好可跳到 Google 同意頁；若 env 未設則 Better Auth 應回錯誤
+
+### 下一步預告（後續子階段）
+
+| 子階段              | 內容                                   |
+| ------------------- | -------------------------------------- |
+| Google Console 設定 | 建立 OAuth 2.0 憑證、設定 redirect URI |
+| Render 環境變數     | 補入 `GOOGLE_CLIENT_ID/SECRET`         |
+| 回跳後的完整驗收    | OAuth 完成 → session 建立 → 訂單正常   |
+| merge 到 main       | 確認所有流程通過後 merge 並自動部署    |
