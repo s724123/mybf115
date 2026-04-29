@@ -8,7 +8,6 @@ import type {
 } from "../../shared/contracts.ts";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
-const USER_STORAGE_KEY = "breakfast.user";
 
 function buildApiUrl(path: string) {
   return `${apiBaseUrl}${path}`;
@@ -16,8 +15,8 @@ function buildApiUrl(path: string) {
 
 export default function App() {
   const [user, setUser] = useState<SessionUser | null>(null);
-  const [emailInput, setEmailInput] = useState("demo@example.com");
-  const [passwordInput, setPasswordInput] = useState("1234");
+  const [emailInput, setEmailInput] = useState("test2@example.com");
+  const [passwordInput, setPasswordInput] = useState("Test1234!");
   const [authError, setAuthError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -55,10 +54,10 @@ export default function App() {
     setCartTotal(0);
   }
 
-  async function loadCurrentOrder(targetUserId: string): Promise<Order | null> {
-    const response = await fetch(
-      buildApiUrl(`/api/orders/current?userId=${targetUserId}`),
-    );
+  async function loadCurrentOrder(): Promise<Order | null> {
+    const response = await fetch(buildApiUrl("/api/orders/current"), {
+      credentials: "include",
+    });
 
     if (!response.ok) {
       throw new Error(`Load current order failed: HTTP ${response.status}`);
@@ -77,13 +76,13 @@ export default function App() {
     return currentOrder;
   }
 
-  async function loadOrderHistory(targetUserId: string): Promise<void> {
+  async function loadOrderHistory(): Promise<void> {
     setHistoryLoading(true);
 
     try {
-      const response = await fetch(
-        buildApiUrl(`/api/orders/history?userId=${targetUserId}`),
-      );
+      const response = await fetch(buildApiUrl("/api/orders/history"), {
+        credentials: "include",
+      });
 
       if (!response.ok) {
         throw new Error(`Load history failed: HTTP ${response.status}`);
@@ -96,34 +95,30 @@ export default function App() {
     }
   }
 
-  async function refreshUserOrders(targetUserId: string): Promise<void> {
-    await Promise.all([
-      loadCurrentOrder(targetUserId),
-      loadOrderHistory(targetUserId),
-    ]);
+  async function refreshUserOrders(): Promise<void> {
+    await Promise.all([loadCurrentOrder(), loadOrderHistory()]);
   }
 
   useEffect(() => {
     let mounted = true;
 
-    const savedUser = window.localStorage.getItem(USER_STORAGE_KEY);
-    if (savedUser) {
+    // V9: 從 Better Auth session cookie 恢復登入狀態（不再用 localStorage）
+    async function restoreSession() {
       try {
-        const parsed = JSON.parse(savedUser) as SessionUser;
-        if (
-          typeof parsed?.id === "string" &&
-          parsed.id.trim() !== "" &&
-          typeof parsed?.email === "string" &&
-          typeof parsed?.name === "string"
-        ) {
-          setUser(parsed);
-        } else {
-          window.localStorage.removeItem(USER_STORAGE_KEY);
+        const res = await fetch(buildApiUrl("/api/auth/get-session"), {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { user?: SessionUser } | null;
+          if (data?.user && mounted) {
+            setUser(data.user);
+          }
         }
       } catch {
-        window.localStorage.removeItem(USER_STORAGE_KEY);
+        // session 無法取得，維持未登入狀態
       }
     }
+    void restoreSession();
 
     async function loadMenu() {
       try {
@@ -164,7 +159,7 @@ export default function App() {
       return;
     }
 
-    void refreshUserOrders(user.id).catch((refreshError) => {
+    void refreshUserOrders().catch((refreshError) => {
       setActionError("載入使用者訂單資料失敗，請稍後再試。");
       console.error(refreshError);
     });
@@ -228,12 +223,12 @@ export default function App() {
     const response = await fetch(buildApiUrl("/api/orders"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id }),
+      credentials: "include",
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) {
-      if ([401, 403, 404].includes(response.status)) {
-        window.localStorage.removeItem(USER_STORAGE_KEY);
+      if ([401, 403].includes(response.status)) {
         setUser(null);
         setAuthError("登入狀態已失效，請重新登入。");
         setActionError("登入狀態已失效，請重新登入。");
@@ -262,9 +257,11 @@ export default function App() {
     setIsLoggingIn(true);
 
     try {
-      const response = await fetch(buildApiUrl("/api/auth/login"), {
+      // Better Auth sign-in endpoint（設定 session cookie）
+      const response = await fetch(buildApiUrl("/api/auth/sign-in/email"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           email: emailInput.trim(),
           password: passwordInput,
@@ -275,18 +272,15 @@ export default function App() {
         throw new Error(`Login failed: HTTP ${response.status}`);
       }
 
-      const payload = (await response.json()) as ApiDataResponse<SessionUser>;
-      const loggedInUser = payload?.data;
+      // Better Auth 回應格式：{ user: SessionUser, token: string, ... }
+      const payload = (await response.json()) as { user?: SessionUser };
+      const loggedInUser = payload?.user;
 
       if (!loggedInUser) {
         throw new Error("Login failed: invalid payload");
       }
 
       setUser(loggedInUser);
-      window.localStorage.setItem(
-        USER_STORAGE_KEY,
-        JSON.stringify(loggedInUser),
-      );
     } catch (loginError) {
       setAuthError("登入失敗，請確認帳號與密碼。");
       console.error(loginError);
@@ -295,8 +289,16 @@ export default function App() {
     }
   }
 
-  function handleLogout() {
-    window.localStorage.removeItem(USER_STORAGE_KEY);
+  async function handleLogout(): Promise<void> {
+    // 通知 server 清除 session cookie
+    try {
+      await fetch(buildApiUrl("/api/auth/sign-out"), {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // sign-out 失敗時仍清除前端狀態
+    }
     setUser(null);
     setAuthError("");
     setActionError("");
@@ -312,35 +314,70 @@ export default function App() {
         throw new Error("Please login first");
       }
 
+      const patchOrderItem = async (
+        targetOrderId: number,
+        qty: number,
+      ): Promise<Order> => {
+        const response = await fetch(
+          buildApiUrl(`/api/orders/${targetOrderId}`),
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              itemId: item.id,
+              qty,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Update order failed: HTTP ${response.status}`);
+        }
+
+        const payload = (await response.json()) as ApiDataResponse<Order>;
+        const updatedOrder = payload?.data;
+
+        if (!updatedOrder) {
+          throw new Error("Update order failed: invalid payload");
+        }
+
+        return updatedOrder;
+      };
+
       const targetOrderId = await ensureOrder();
       const currentQty = cartQtyByItemId[item.id] ?? 0;
       const nextQty = currentQty + 1;
 
-      const response = await fetch(
-        buildApiUrl(`/api/orders/${targetOrderId}`),
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            itemId: item.id,
-            qty: nextQty,
-          }),
-        },
-      );
+      try {
+        const updatedOrder = await patchOrderItem(targetOrderId, nextQty);
+        syncCartFromOrder(updatedOrder);
+      } catch (firstTryError) {
+        const firstTryMessage =
+          firstTryError instanceof Error ? firstTryError.message : "";
 
-      if (!response.ok) {
-        throw new Error(`Update order failed: HTTP ${response.status}`);
+        // 換帳號或舊訂單失效時，重新同步目前使用者訂單後再重試一次。
+        if (
+          firstTryMessage.includes("HTTP 403") ||
+          firstTryMessage.includes("HTTP 404")
+        ) {
+          setOrderId(null);
+
+          const recoveredOrder = await loadCurrentOrder();
+          const retryOrderId = recoveredOrder?.id ?? (await ensureOrder());
+          const recoveredQty =
+            recoveredOrder?.items.find(
+              (orderItem) => orderItem.item.id === item.id,
+            )?.qty ?? 0;
+          const retryQty = recoveredQty + 1;
+
+          const retriedOrder = await patchOrderItem(retryOrderId, retryQty);
+          syncCartFromOrder(retriedOrder);
+          return;
+        }
+
+        throw firstTryError;
       }
-
-      const payload = (await response.json()) as ApiDataResponse<Order>;
-      const updatedOrder = payload?.data;
-
-      if (!updatedOrder) {
-        throw new Error("Update order failed: invalid payload");
-      }
-
-      syncCartFromOrder(updatedOrder);
     } catch (cartError) {
       if (
         cartError instanceof Error &&
@@ -351,7 +388,7 @@ export default function App() {
 
       if (user) {
         try {
-          const recoveredOrder = await loadCurrentOrder(user.id);
+          const recoveredOrder = await loadCurrentOrder();
           const recoveredQty = recoveredOrder?.items.find(
             (orderItem) => orderItem.item.id === item.id,
           )?.qty;
@@ -384,8 +421,8 @@ export default function App() {
         const response = await fetch(buildApiUrl(`/api/orders/${orderId}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
-            userId: user.id,
             itemId: detail.itemId,
             qty: 0,
           }),
@@ -420,7 +457,8 @@ export default function App() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id }),
+          credentials: "include",
+          body: JSON.stringify({}),
         },
       );
 
@@ -430,7 +468,7 @@ export default function App() {
 
       resetCartState();
       setIsCartOpen(false);
-      await loadOrderHistory(user.id);
+      await loadOrderHistory();
     } catch (submitError) {
       setActionError("送出訂單失敗，請稍後再試。");
       console.error(submitError);
@@ -485,7 +523,12 @@ export default function App() {
               購物車明細
             </button>
             {user ? (
-              <button className="btn btn-sm" onClick={handleLogout}>
+              <button
+                className="btn btn-sm"
+                onClick={() => {
+                  void handleLogout();
+                }}
+              >
                 登出
               </button>
             ) : null}
@@ -499,7 +542,8 @@ export default function App() {
             <div className="card-body">
               <h2 className="card-title">登入後開始點餐</h2>
               <p className="text-sm opacity-70">
-                範例帳號：demo@example.com、amy@example.com，密碼皆為 1234
+                範例帳號：test@example.com、test2@example.com，密碼皆為
+                Test1234!
               </p>
               <label className="form-control w-full">
                 <span className="label-text mb-1">Email</span>

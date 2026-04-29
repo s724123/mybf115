@@ -9,12 +9,6 @@ interface CreateStoreOptions {
 export function createStore(options: CreateStoreOptions = {}): Store {
   const driver = process.env.STORE_DRIVER;
 
-  if (driver === "json") {
-    return new JsonFileStore({
-      dataFilePath: options.dataFilePath ?? "./data/store.json",
-    });
-  }
-
   if (driver === "postgres") {
     return new PgStore({
       dataFilePath: options.dataFilePath ?? "./data/store.json",

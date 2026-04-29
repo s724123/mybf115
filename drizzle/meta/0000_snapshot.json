@@ -1,12 +1,12 @@
 {
-  "id": "06f59553-336d-4d09-903d-8ee897f1acf9",
+  "id": "56c0fd3a-7050-4c42-a7c6-a05dca48a8e9",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.menu_items": {
+    "bf_v8.menu_items": {
       "name": "menu_items",
-      "schema": "",
+      "schema": "bf_v8",
       "columns": {
         "id": {
           "name": "id",
@@ -16,7 +16,7 @@
           "identity": {
             "type": "byDefault",
             "name": "menu_items_id_seq",
-            "schema": "public",
+            "schema": "bf_v8",
             "increment": "1",
             "startWith": "1",
             "minValue": "1",
@@ -64,9 +64,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.order_items": {
+    "bf_v8.order_items": {
       "name": "order_items",
-      "schema": "",
+      "schema": "bf_v8",
       "columns": {
         "id": {
           "name": "id",
@@ -76,7 +76,7 @@
           "identity": {
             "type": "byDefault",
             "name": "order_items_id_seq",
-            "schema": "public",
+            "schema": "bf_v8",
             "increment": "1",
             "startWith": "1",
             "minValue": "1",
@@ -162,6 +162,7 @@
           "name": "order_items_order_id_orders_id_fk",
           "tableFrom": "order_items",
           "tableTo": "orders",
+          "schemaTo": "bf_v8",
           "columnsFrom": [
             "order_id"
           ],
@@ -178,9 +179,9 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.orders": {
+    "bf_v8.orders": {
       "name": "orders",
-      "schema": "",
+      "schema": "bf_v8",
       "columns": {
         "id": {
           "name": "id",
@@ -190,7 +191,7 @@
           "identity": {
             "type": "byDefault",
             "name": "orders_id_seq",
-            "schema": "public",
+            "schema": "bf_v8",
             "increment": "1",
             "startWith": "1",
             "minValue": "1",
@@ -201,7 +202,7 @@
         },
         "user_id": {
           "name": "user_id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -238,6 +239,7 @@
           "name": "orders_user_id_users_id_fk",
           "tableFrom": "orders",
           "tableTo": "users",
+          "schemaTo": "bf_v8",
           "columnsFrom": [
             "user_id"
           ],
@@ -254,26 +256,15 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.users": {
+    "bf_v8.users": {
       "name": "users",
-      "schema": "",
+      "schema": "bf_v8",
       "columns": {
         "id": {
           "name": "id",
-          "type": "integer",
+          "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "users_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "2147483647",
-            "cache": "1",
-            "cycle": false
-          }
+          "notNull": true
         },
         "email": {
           "name": "email",

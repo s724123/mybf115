@@ -256,8 +256,17 @@ export class JsonFileStore implements Store {
   }
 
   getCurrentOrderByUserId(userId: string): Order | undefined {
-    return this.orders.find(
+    const pendingOrders = this.orders.filter(
       (order) => order.userId === userId && order.status === "pending",
+    );
+
+    if (pendingOrders.length === 0) {
+      return undefined;
+    }
+
+    // 取最新 pending（id 越大越新），避免拿到舊的空購物車訂單。
+    return pendingOrders.reduce((latest, current) =>
+      current.id > latest.id ? current : latest,
     );
   }
 
@@ -274,6 +283,11 @@ export class JsonFileStore implements Store {
   }
 
   async createOrder(input: { userId: string }): Promise<Order> {
+    const existingOrder = this.getCurrentOrderByUserId(input.userId);
+    if (existingOrder) {
+      return existingOrder;
+    }
+
     const newOrder: Order = {
       id: ++this.orderIdCounter,
       userId: input.userId,
