@@ -1479,3 +1479,190 @@ git push -u origin feat/v9-clean-better-auth-v2
 
 > 教學重點：
 > 文件不是收尾附錄，而是決策本體。先寫清楚為什麼，再進行操作，才能讓學生學到可重現的工程思維。
+
+---
+
+## Phase 9：Google Provider（學生可照做版）
+
+> 目標：在 `feat/v9-clean-better-auth-v2` 分支完成「Google 登入入口」最小可用版本，且不破壞既有 email/password 登入流程。  
+> 完成條件：本地 build 成功、登入頁出現 Google 按鈕、按下可導到 OAuth 流程入口、既有帳密登入仍可用。
+
+### 0) 先備條件
+
+執行前請先確認：
+
+1. 已完成 V9 第一階段（email/password + session）
+2. 已建立 `feat/v9-clean-better-auth-v2` 分支
+3. 本機已可執行 `bun run build`
+
+### 1) 開工前檢查（一定要做）
+
+在專案根目錄執行：
+
+```bash
+cd /root/00_nsPrj/01_backEnd/06_elysia/00_demo01
+git status -sb
+git rev-parse --abbrev-ref HEAD
+```
+
+預期結果：
+
+1. 工作樹乾淨（沒有 `M`、`??`）
+2. 分支名稱是 `feat/v9-clean-better-auth-v2`
+
+若不是 v2 分支：
+
+```bash
+git switch feat/v9-clean-better-auth-v2
+```
+
+### 2) 環境變數設定（Google OAuth 必要）
+
+編輯 `.env`（本機）與平台環境變數（部署環境）時，至少要有：
+
+```dotenv
+GOOGLE_CLIENT_ID=你的 client id
+GOOGLE_CLIENT_SECRET=你的 client secret
+BETTER_AUTH_URL=http://localhost:3000
+```
+
+部署到 Render 時：
+
+```dotenv
+BETTER_AUTH_URL=https://<your-service>.onrender.com
+```
+
+> 重要：`BETTER_AUTH_URL` 必須等於實際存取網域，否則 callback 與 CSRF 相關流程會異常。
+
+### 3) 後端 Provider 開關（已採 env guard）
+
+在 `auth/better-auth.ts` 檢查是否符合下列規則：
+
+1. 只有 `GOOGLE_CLIENT_ID` 與 `GOOGLE_CLIENT_SECRET` 都存在時才啟用 `socialProviders.google`
+2. 任一缺漏時不啟用 Google provider（維持 email/password 正常）
+
+核對片段（概念）：
+
+```ts
+const isGoogleProviderConfigured = Boolean(googleClientId && googleClientSecret);
+
+export const auth = betterAuth({
+  // ...
+  emailAndPassword: { enabled: true },
+  ...(isGoogleProviderConfigured
+    ? {
+        socialProviders: {
+          google: { clientId: googleClientId!, clientSecret: googleClientSecret! },
+        },
+      }
+    : {}),
+});
+```
+
+### 4) 前端：新增 Google 登入按鈕
+
+在登入區塊加入第二入口（與 email/password 並存）：
+
+1. 顯示按鈕文字「使用 Google 登入」
+2. 按下後導向 Better Auth social sign-in 路徑
+3. 失敗時顯示錯誤訊息
+4. 按鈕執行中禁用，避免連點
+
+建議流程（偽碼）：
+
+```ts
+async function handleGoogleSignIn(): Promise<void> {
+  setAuthError("");
+  setIsGoogleSigningIn(true);
+  try {
+    const callbackURL = window.location.origin;
+    window.location.href = buildApiUrl(`/api/auth/sign-in/social?provider=google&callbackURL=${encodeURIComponent(callbackURL)}`);
+  } catch {
+    setAuthError("Google 登入啟動失敗，請稍後再試。");
+    setIsGoogleSigningIn(false);
+  }
+}
+```
+
+> 若目前專案使用 Better Auth 官方 client，則改以官方方法發起 social sign-in；原則不變：
+> 「保留帳密入口 + Google 入口平行存在 + 錯誤可見 + 防重複提交」。
+
+### 5) Build 驗證（每次改完都要跑）
+
+```bash
+cd /root/00_nsPrj/01_backEnd/06_elysia/00_demo01
+bun run build
+```
+
+預期結果：
+
+1. frontend build 成功
+2. backend bundle 成功
+3. 無 TypeScript 型別錯誤
+
+### 6) 手動驗收清單（最小可用）
+
+本機啟動服務後，逐項勾選：
+
+1. 登入頁可看到「帳密登入」與「Google 登入」兩個入口
+2. 點 Google 按鈕可導到 Google OAuth 同意頁（或 provider 入口）
+3. 回跳後能回到站點，`/api/auth/get-session` 可取得 session
+4. 原本 email/password 登入流程仍正常
+5. 登出後可回到未登入狀態
+
+### 7) 常見錯誤與排查
+
+#### 錯誤 A：`redirect_uri_mismatch`
+
+代表 Google Console 設定的 callback URL 與實際 callback 不一致。  
+修法：到 Google Cloud Console 修正 Authorized redirect URIs，必須與實際網址完全一致（含協定、網域、路徑）。
+
+#### 錯誤 B：按鈕按下後又回登入頁，沒有 session
+
+優先檢查：
+
+1. `BETTER_AUTH_URL` 是否正確
+2. `GOOGLE_CLIENT_ID/SECRET` 是否真的進到執行環境
+3. Network 有無 `4xx/5xx`
+
+#### 錯誤 C：本機可用、Render 失敗
+
+多半是部署環境變數不完整。請對照 Render 服務中的：
+
+1. `BETTER_AUTH_URL`
+2. `BETTER_AUTH_SECRET`
+3. `GOOGLE_CLIENT_ID`
+4. `GOOGLE_CLIENT_SECRET`
+
+### 8) 回滾方式（本階段失敗時）
+
+若本次整合失敗，要快速回到安全點：
+
+```bash
+# 丟棄尚未 commit 的修改
+git restore auth/better-auth.ts frontend/src/App.tsx .env.example
+
+# 若已 commit，回到前一版（保留歷史請用 revert）
+git revert <bad_commit_sha>
+```
+
+### 9) 建議 commit 範本
+
+```bash
+git add auth/better-auth.ts frontend/src/App.tsx .env.example
+git commit -m "feat(v9-v2): add google sign-in entry with guarded provider config
+
+- add google sign-in button in login page
+- keep email/password flow unchanged
+- guard social provider by env presence
+- update env example for google oauth variables"
+git push origin feat/v9-clean-better-auth-v2
+```
+
+### 10) 教師/助教驗收要點
+
+評分時只看三件事：
+
+1. 學生是否遵守「先文件、後操作」流程
+2. Google 入口是否與既有帳密流程並存且互不破壞
+3. 是否能用可重現指令完成 build、驗收、回滾
