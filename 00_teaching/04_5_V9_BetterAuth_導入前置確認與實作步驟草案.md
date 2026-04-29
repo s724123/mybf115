@@ -1432,3 +1432,50 @@ CSRF 防護的目的是阻止「**跨站請求偽造**（Cross-Site Request Forg
 | **程式防線 B** | `handleLogout()` 改為 fail-fast，非 2xx 顯示錯誤並中止             |
 | **commits**    | `7a3fd5a`（feature）、`baf8832`（main merge）                      |
 | **部署**       | push 到 main 後 Render 自動重建部署                                |
+
+---
+
+## Phase 8：Google Provider 前置治理（教學分段與分支策略）
+
+### 為什麼要先切 `feat/v9-clean-better-auth-v2`
+
+V9 第一階段（email/password + session + Render 穩定化）已完成，若直接在同一分支繼續加 Google provider，學生在閱讀 diff 時會把兩個學習目標混在一起：
+
+1. 第一階段：身份來源重構與 session 穩定
+2. 第二階段：第三方 OAuth provider 整合
+
+為了降低教學心智負擔，採用「里程碑分支」策略：
+
+- `feat/v9-clean-better-auth`：封存第一階段完成版
+- `feat/v9-clean-better-auth-v2`：專注第二階段 Google provider
+
+這樣可確保：
+
+1. 學生看到的 diff 更單純（同一份改動只回答一個問題）
+2. 回滾成本更低（Google provider 出問題可只回退 v2）
+3. 助教評分更清晰（可分開驗收第一階段與第二階段）
+
+### 本次已執行動作（實錄）
+
+已完成分支治理動作：
+
+```bash
+git switch -c feat/v9-clean-better-auth-v2 origin/main
+git push -u origin feat/v9-clean-better-auth-v2
+```
+
+確認結果：
+
+- `feat/v9-clean-better-auth-v2` 已建立並追蹤遠端
+- 基底是 `origin/main` 的穩定提交（`6747551`）
+- 後續 Google provider 相關改動全部在 v2 進行
+
+### 流程規範（教學與實作同步）
+
+從這個階段起，採固定流程：
+
+1. 先把「已做動作 + 決策理由 + 風險判斷」整合進講義
+2. 再做下一步技術操作（寫碼、build、merge、deploy）
+
+> 教學重點：
+> 文件不是收尾附錄，而是決策本體。先寫清楚為什麼，再進行操作，才能讓學生學到可重現的工程思維。
