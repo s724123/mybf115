@@ -1794,8 +1794,10 @@ Better Auth 回 500
 ```ts
 // App.tsx handleLogout()
 if (!res.ok) {
-  setActionError(`登出失敗（HTTP ${res.status}），請重試或手動清除瀏覽器 Cookie。`);
-  return;  // ← 中止，user 狀態不清除，不假裝登出成功
+  setActionError(
+    `登出失敗（HTTP ${res.status}），請重試或手動清除瀏覽器 Cookie。`,
+  );
+  return; // ← 中止，user 狀態不清除，不假裝登出成功
 }
 ```
 
@@ -1839,25 +1841,29 @@ rm "$COOKIE_JAR"
 // backend.ts - /api/sign-out proxy
 const res = await auth.handler(proxiedRequest);
 if (!res.ok) {
-  const body = await res.clone().text().catch(() => "(unreadable)");
+  const body = await res
+    .clone()
+    .text()
+    .catch(() => "(unreadable)");
   console.error(`[sign-out proxy] Better Auth returned ${res.status}:`, body);
 }
 return res;
 ```
 
 現在若再次發生 500，server terminal 會顯示 Better Auth 的原始錯誤訊息，可立即判斷是：
+
 - DB 連線問題（`ECONNREFUSED` / `timeout`）
 - Session schema 問題（`column not found`）
 - 其他 Better Auth 內部錯誤
 
 ### 解法對照
 
-| 方案 | 說明 | 本專案採用？ |
-|---|---|---|
-| 什麼都不做 | 重試就好，cold-start 是正常現象 | ✅ 可接受 |
-| 健康檢查路由 | `/health` 已存在，啟動後先 ping 一次讓 Pool 熱機 | 可選 |
-| Pool 預熱 | 啟動時主動執行一次 `db.execute(sql\`SELECT 1\`)` | 過度工程 |
-| 改用 HTTP adapter | Neon HTTP adapter 無 WebSocket cold-start 問題，但有其他 trade-off | 進階選項 |
+| 方案              | 說明                                                               | 本專案採用？ |
+| ----------------- | ------------------------------------------------------------------ | ------------ |
+| 什麼都不做        | 重試就好，cold-start 是正常現象                                    | ✅ 可接受    |
+| 健康檢查路由      | `/health` 已存在，啟動後先 ping 一次讓 Pool 熱機                   | 可選         |
+| Pool 預熱         | 啟動時主動執行一次 `db.execute(sql\`SELECT 1\`)`                   | 過度工程     |
+| 改用 HTTP adapter | Neon HTTP adapter 無 WebSocket cold-start 問題，但有其他 trade-off | 進階選項     |
 
 **結論**：cold-start 偶發 500 + 前端正確顯示錯誤 + 使用者重試成功 = 可接受的行為。  
 server-side log 已加入，往後若頻率升高才需要進一步處理。
@@ -1872,3 +1878,205 @@ server-side log 已加入，往後若頻率升高才需要進一步處理。
 | Render 環境變數     | 補入 `GOOGLE_CLIENT_ID/SECRET`         |
 | 回跳後的完整驗收    | OAuth 完成 → session 建立 → 訂單正常   |
 | merge 到 main       | 確認所有流程通過後 merge 並自動部署    |
+
+---
+
+## Phase 10：Google Cloud Console OAuth 設定（可照做版）
+
+> **前置條件**：你有一個 Google 帳號，且有存取 [Google Cloud Console](https://console.cloud.google.com) 的權限。  
+> **預計時間**：10–15 分鐘。  
+> **完成後你會得到**：`GOOGLE_CLIENT_ID` 與 `GOOGLE_CLIENT_SECRET` 兩個值。
+
+---
+
+### Step 1：建立或選擇 Google Cloud 專案
+
+1. 開瀏覽器前往 <https://console.cloud.google.com>
+2. 頁面頂部有「專案選擇器」下拉選單
+   - 若你有既有測試專案可直接選用
+   - 若要新建：點「新增專案」→ 輸入名稱（例如 `bf1042-dev`）→「建立」
+3. 確認左上角顯示你選定的專案名稱
+
+---
+
+### Step 2：啟用 OAuth 同意畫面
+
+> 這步驟設定「使用者看到的 Google 同意頁面」顯示什麼資訊。
+
+1. 左側選單搜尋 **「OAuth 同意畫面」**（或前往 APIs & Services → OAuth consent screen）
+2. 選擇 **「外部（External）」** → 「建立」
+   - 「內部」只限 Google Workspace 組織帳號，一般帳號選「外部」
+3. 填寫必填欄位：
+   | 欄位 | 填入值 |
+   |---|---|
+   | 應用程式名稱 | `bf1042 早餐店`（或任何你喜歡的名稱）|
+   | 使用者支援電子郵件 | 你的 Google 帳號 email |
+   | 開發人員聯絡資訊 | 你的 Google 帳號 email |
+4. 其餘欄位保持預設，按「儲存並繼續」直到完成所有步驟
+5. 最後畫面按「返回資訊主頁」
+
+> **注意**：「外部」應用程式預設在「測試中」狀態，只有你手動加入的測試使用者可以登入。  
+> 正式上線前不需要送審，測試階段用「測試中」就夠。
+
+---
+
+### Step 3：新增測試使用者（開發階段必做）
+
+1. 在 OAuth 同意畫面頁面，點「**測試使用者**」分頁
+2. 點「**新增使用者**」
+3. 輸入你要測試 Google 登入的 Gmail 帳號（可以是你自己的帳號）
+4. 按「新增」→「儲存」
+
+> 沒有加入測試使用者就嘗試 Google 登入，會看到「這個應用程式未經 Google 驗證」錯誤並無法繼續。
+
+---
+
+### Step 4：建立 OAuth 2.0 用戶端 ID
+
+1. 左側選單前往 **APIs & Services → 憑證（Credentials）**
+2. 點頁面頂部「**建立憑證**」→「**OAuth 用戶端 ID**」
+3. 應用程式類型選「**網路應用程式（Web application）**」
+4. 名稱填 `bf1042 localhost`（方便辨識是哪個環境）
+5. 找到「**已授權的重新導向 URI**」區塊，點「新增 URI」，依序加入：
+
+   **本機開發環境**：
+
+   ```
+   http://localhost:3000/api/auth/callback/google
+   ```
+
+   **Render 正式環境**（把 `xxxx` 換成你的實際 Render service 名稱）：
+
+   ```
+   https://xxxx.onrender.com/api/auth/callback/google
+   ```
+
+   > URI 路徑一定要是 `/api/auth/callback/google`。  
+   > 這是 Better Auth 預設的 Google OAuth callback 路徑（無法自訂）。  
+   > 大小寫要完全正確，結尾不要多加 `/`。
+
+6. 按「**建立**」
+
+---
+
+### Step 5：取得 Client ID 與 Client Secret
+
+建立成功後會彈出一個視窗，顯示：
+
+```
+用戶端 ID（Client ID）：  xxxxxxxxxx.apps.googleusercontent.com
+用戶端密碼（Client Secret）：GOCSPX-xxxxxxxxxxxx
+```
+
+**立刻複製這兩個值**，之後要填入 `.env` 和 Render 環境變數。  
+（關掉這個視窗後也可以在憑證頁面重新查看，但 Secret 不會再顯示完整值，需要重新產生）
+
+---
+
+### Step 6：設定本機 `.env`
+
+在專案根目錄的 `.env` 補上兩行：
+
+```dotenv
+GOOGLE_CLIENT_ID=xxxxxxxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxxxxxxxxxx
+```
+
+**安全提醒**：
+
+- `.env` 已在 `.gitignore` 中，不會被提交 → 安全
+- `.env.example` 已有佔位欄位（`GOOGLE_CLIENT_ID=`），學生對照填寫即可
+- **絕對不要** 把真實的 `CLIENT_ID/SECRET` 貼進任何檔案再 commit
+
+設定後**重啟 server**：
+
+```bash
+# 停掉舊的 bun dev，重新啟動
+bun run backend.ts
+```
+
+啟動 log 應出現（若 env guard 啟用成功）：
+
+```
+🍳 早餐店 API 運行在 http://localhost:3000
+```
+
+（Better Auth 本身不會印 Google provider 啟用訊息，但不報錯代表 env guard 通過）
+
+---
+
+### Step 7：本機驗收
+
+```bash
+# 確認 Google provider 已啟動（Better Auth 的 providers 清單）
+curl -s http://localhost:3000/api/auth/get-providers 2>/dev/null || echo "（此端點不存在屬正常）"
+```
+
+> Better Auth 沒有 `/get-providers` 端點，上面指令輸出「不存在」是正常的。  
+> 真正的驗收是瀏覽器測試：
+
+1. 開 `http://localhost:3000`
+2. 點「使用 Google 登入」按鈕
+3. 預期行為：瀏覽器跳轉到 Google 同意頁面
+
+若看到 Google 同意頁面 → 代表後端 Google provider 正確啟動、redirect URI 設定正確。
+
+#### 可能的錯誤與排查
+
+| 錯誤訊息                                        | 原因                                                                               | 解法                                                                              |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `redirect_uri_mismatch`                         | Google Console 的 redirect URI 與後端實際 callback URL 不符                        | 確認 Console 填的是 `http://localhost:3000/api/auth/callback/google`（不是 5173） |
+| `access_blocked: This app's request is invalid` | OAuth 同意畫面設定有誤                                                             | 確認同意畫面是「外部」且已儲存                                                    |
+| `Error 403: access_denied`                      | 使用者不在測試名單                                                                 | Step 3 加入測試使用者                                                             |
+| 按按鈕後沒反應 / 停在原頁                       | `GOOGLE_CLIENT_ID` env 沒設 → env guard 未啟用 → `/api/auth/sign-in/social` 回錯誤 | 確認 `.env` 有兩個值且重啟 server                                                 |
+| `網路錯誤` / `fetch failed`                     | server 沒在跑                                                                      | `bun run backend.ts`                                                              |
+
+---
+
+### Step 8：設定 Render 環境變數
+
+> 本機測試通過後才做這步。
+
+1. 前往 <https://dashboard.render.com> → 你的 service → **Environment**
+2. 找到「Environment Variables」區塊，點「Add Environment Variable」，依序加入：
+
+   | Key                    | Value                                   |
+   | ---------------------- | --------------------------------------- |
+   | `GOOGLE_CLIENT_ID`     | `xxxxxxxxxx.apps.googleusercontent.com` |
+   | `GOOGLE_CLIENT_SECRET` | `GOCSPX-xxxxxxxxxxxx`                   |
+
+3. 點「**Save Changes**」→ Render 會自動重新部署
+
+4. 部署完成後，在瀏覽器開 `https://xxxx.onrender.com` → 點「使用 Google 登入」驗收
+
+> Render 的重新導向 URI 要與 Step 4 中填入 Google Console 的 `https://xxxx.onrender.com/api/auth/callback/google` 完全一致。
+
+---
+
+### Step 9：完整 OAuth 流程驗收清單
+
+| 驗收項目                       | 預期結果                                                     |
+| ------------------------------ | ------------------------------------------------------------ |
+| 點「使用 Google 登入」         | 瀏覽器跳轉到 Google 同意頁                                   |
+| 在 Google 同意頁選擇帳號並同意 | 瀏覽器回跳到站台首頁                                         |
+| 回跳後的 UI 狀態               | 顯示已登入的使用者姓名（Google 帳號名稱）                    |
+| 帳密登入仍正常                 | 原有 email/password 登入不受影響                             |
+| 登出後再登入                   | Google 使用者可重複登入                                      |
+| DB 檢查（進階）                | `bf_v9.account` table 有一筆 `provider_id = 'google'` 的記錄 |
+
+---
+
+### 回滾方式
+
+若 Google 登入造成問題，只需從 `.env` / Render 移除兩個環境變數並重啟：
+
+```bash
+# 本機：從 .env 移除或清空兩行
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+
+# 重啟 server → env guard 自動停用 Google provider
+bun run backend.ts
+```
+
+後端 `auth/better-auth.ts` 的 env guard 確保：**沒有 env 就沒有 Google provider，不需要改 code**。
