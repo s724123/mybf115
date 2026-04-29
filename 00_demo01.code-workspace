@@ -95,6 +95,38 @@
         "approve": true,
         "matchCommandLine": true,
       },
+      "/^cd /root/00_nsPrj/01_backEnd/06_elysia/00_demo01 && cp backend\\.ts backend\\.v9\\.pre-better-auth\\.ts && echo \"備份完成\" && ls -lh backend\\*\\.ts$/": {
+        "approve": true,
+        "matchCommandLine": true,
+      },
+      "/^cd /root/00_nsPrj/01_backEnd/06_elysia/00_demo01 && git add backend\\.v9\\.pre-better-auth\\.ts && git commit -m \"chore: backup backend\\.ts before Better Auth integration \\(Phase 0\\)\"$/": {
+        "approve": true,
+        "matchCommandLine": true,
+      },
+      "/^cd /root/00_nsPrj/01_backEnd/06_elysia/00_demo01 && bun add better-auth 2>&1 \\| tail -5$/": {
+        "approve": true,
+        "matchCommandLine": true,
+      },
+      "/^cd /root/00_nsPrj/01_backEnd/06_elysia/00_demo01/frontend && bun add better-auth 2>&1 \\| tail -5$/": {
+        "approve": true,
+        "matchCommandLine": true,
+      },
+      "/^openssl rand -hex 32$/": {
+        "approve": true,
+        "matchCommandLine": true,
+      },
+      "/^bun -e \"console\\.log\\(require\\('crypto'\\)\\.randomBytes\\(32\\)\\.toString\\('hex'\\)\\)\"$/": {
+        "approve": true,
+        "matchCommandLine": true,
+      },
+      "/^cd /root/00_nsPrj/01_backEnd/06_elysia/00_demo01 && bun run --bun node_modules/\\.bin/better-auth generate --config auth/better-auth\\.ts 2>&1 \\| head -30 \\|\\| echo \"CLI_FAILED\"$/": {
+        "approve": true,
+        "matchCommandLine": true,
+      },
+      "/^cd /root/00_nsPrj/01_backEnd/06_elysia/00_demo01 && find node_modules -name \"better-auth\" -type f 2>/dev/null \\| head -5 && bunx better-auth generate --help 2>&1 \\| head -10$/": {
+        "approve": true,
+        "matchCommandLine": true,
+      },
     },
   },
 }
