@@ -3,23 +3,16 @@ import { z } from "zod";
 import { openapi } from "@elysiajs/openapi";
 import { staticPlugin } from "@elysiajs/static";
 import { existsSync } from "node:fs";
-import toTaipeiDateTime from "./util.ts";
-import type { Order, OrderResponse } from "./shared/contracts.ts";
+import { menuItemSchema, orderItemSchema } from "./shared/contracts.ts";
 import {
-  menuItemSchema,
-  orderItemSchema,
   orderResponseSchema,
   apiErrorResponseSchema,
-} from "./shared/contracts.ts";
+  toOrderResponse,
+  type Order,
+  type OrderResponse,
+} from "./shared/route-schemas.ts";
 import { createStore } from "./store/index.ts";
 import { auth, getCurrentUser } from "./auth/better-auth.ts";
-
-function toOrderResponse(order: Order): OrderResponse {
-  return {
-    ...order,
-    createdAtTaipei: toTaipeiDateTime(order.createdAt),
-  };
-}
 
 // 從環境變量獲取配置
 const port = parseInt(process.env.PORT || "3000", 10);

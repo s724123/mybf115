@@ -13,11 +13,26 @@ export const menuItemSchema = z.object({
   image_url: z.string().min(1),
 });
 
-export const sessionUserSchema = z.object({
+// ─── User schemas（業務層）──────────────────────────────────────────────────
+// userSchema：完整使用者資料（業務/資料層使用，不對外暴露）
+// sessionUserSchema：API 回傳的最小安全投影（不含 password 等敏感欄位）
+// 注意：V9 使用 Better Auth，userSchema 由 Better Auth DB 負責儲存。
+//       sessionUserSchema 為 auth session 對外的唯一輸出格式。
+
+export const userSchema = z.object({
   id: z.string().min(1),
   email: z.string().min(3),
   name: z.string().min(1),
-  // 注意：password 不在 API 業務層，只存在 DB 層（db/schema.ts）
+  password: z.string().min(1),
+  // 預留個資欄位（V9+ 實作使用者 profile 時使用）
+  birthday: z.string().min(1).optional(),
+  address: z.string().min(1).optional(),
+});
+
+export const sessionUserSchema = userSchema.pick({
+  id: true,
+  email: true,
+  name: true,
 });
 
 export const orderItemSchema = z.object({
@@ -35,23 +50,12 @@ export const orderSchema = z.object({
   submittedAt: z.string().min(1).optional(),
 });
 
-export const orderResponseSchema = orderSchema.extend({
-  createdAtTaipei: z.string().min(1),
-});
-
-export const apiErrorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string().optional(),
-});
-
 // ─── Derived TypeScript Types（自動推導，永不過時）───────────────────────────
 export type MenuItem = z.infer<typeof menuItemSchema>;
+export type User = z.infer<typeof userSchema>;
 export type SessionUser = z.infer<typeof sessionUserSchema>;
-export type User = SessionUser; // 與 SessionUser 相同（API 層不含 password）
 export type OrderItem = z.infer<typeof orderItemSchema>;
 export type Order = z.infer<typeof orderSchema>;
-export type OrderResponse = z.infer<typeof orderResponseSchema>;
-export type ApiErrorResponse = z.infer<typeof apiErrorResponseSchema>;
 
 export interface ApiDataResponse<T> {
   data: T;
