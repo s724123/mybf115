@@ -35,23 +35,12 @@ export const orderSchema = z.object({
   submittedAt: z.string().min(1).optional(),
 });
 
-export const orderResponseSchema = orderSchema.extend({
-  createdAtTaipei: z.string().min(1),
-});
-
-export const apiErrorResponseSchema = z.object({
-  error: z.string(),
-  message: z.string().optional(),
-});
-
 // ─── Derived TypeScript Types（自動推導，永不過時）───────────────────────────
 export type MenuItem = z.infer<typeof menuItemSchema>;
 export type SessionUser = z.infer<typeof sessionUserSchema>;
 export type User = SessionUser; // 與 SessionUser 相同（API 層不含 password）
 export type OrderItem = z.infer<typeof orderItemSchema>;
 export type Order = z.infer<typeof orderSchema>;
-export type OrderResponse = z.infer<typeof orderResponseSchema>;
-export type ApiErrorResponse = z.infer<typeof apiErrorResponseSchema>;
 
 export interface ApiDataResponse<T> {
   data: T;

@@ -1,25 +1,28 @@
 import { Elysia } from "elysia";
-import { z } from "zod";
 import { openapi } from "@elysiajs/openapi";
 import { staticPlugin } from "@elysiajs/static";
 import { existsSync } from "node:fs";
 import toTaipeiDateTime from "./util.ts";
-import type { Order, OrderResponse } from "./shared/contracts.ts";
 import {
-  menuItemSchema,
-  orderItemSchema,
-  orderResponseSchema,
   apiErrorResponseSchema,
-} from "./shared/contracts.ts";
+  createMenuItemBodySchema,
+  deleteMenuItemParamsSchema,
+  getOrderByIdParamsSchema,
+  healthResponseSchema,
+  menuItemResponseSchema,
+  menuListResponseSchema,
+  nullableOrderResponseEnvelopeSchema,
+  orderListResponseSchema,
+  orderResponseEnvelopeSchema,
+  submitOrderParamsSchema,
+  toOrderResponse,
+  updateMenuItemBodySchema,
+  updateMenuItemParamsSchema,
+  updateOrderBodySchema,
+  updateOrderParamsSchema,
+} from "./shared/route-schemas.ts";
 import { createStore } from "./store/index.ts";
 import { auth, getCurrentUser } from "./auth/better-auth.ts";
-
-function toOrderResponse(order: Order): OrderResponse {
-  return {
-    ...order,
-    createdAtTaipei: toTaipeiDateTime(order.createdAt),
-  };
-}
 
 // 從環境變量獲取配置
 const port = parseInt(process.env.PORT || "3000", 10);
@@ -28,34 +31,6 @@ const allowedOrigin = process.env.API_ALLOWED_ORIGIN || "*";
 const store = createStore({ dataFilePath: "./data/store.json" });
 const hasPublicAssets =
   existsSync("./public") && existsSync("./public/index.html");
-
-// ─── Response Envelope Schemas（從 shared/contracts.ts 的業務 schema 組合）──
-// 業務核心型別（menuItemSchema, orderResponseSchema 等）
-// 定義在 shared/contracts.ts，這裡只組合成各 API 需要的 envelope 結構。
-
-const menuListResponseSchema = z.object({
-  data: z.array(menuItemSchema),
-});
-
-const menuItemResponseSchema = z.object({
-  data: menuItemSchema,
-});
-
-const orderListResponseSchema = z.object({
-  data: z.array(orderResponseSchema),
-});
-
-const orderResponseEnvelopeSchema = z.object({
-  data: orderResponseSchema,
-});
-
-const nullableOrderResponseEnvelopeSchema = z.object({
-  data: orderResponseSchema.nullable(),
-});
-
-const healthResponseSchema = z.object({
-  status: z.string(),
-});
 
 const app = new Elysia();
 
@@ -206,13 +181,7 @@ app.post(
     return { data: newMenuItem };
   },
   {
-    body: z.object({
-      name: z.string().min(1),
-      price: z.number().int().min(0),
-      category: z.string().min(1),
-      description: z.string().min(1),
-      image_url: z.string().min(1),
-    }),
+    body: createMenuItemBodySchema,
     detail: {
       tags: ["menu"],
       summary: "Create a menu item",
@@ -238,16 +207,8 @@ app.patch(
     return { data: menuItem };
   },
   {
-    params: z.object({
-      id: z.string().regex(/^[0-9]+$/),
-    }),
-    body: z.object({
-      name: z.string().min(1).optional(),
-      price: z.number().int().min(0).optional(),
-      category: z.string().min(1).optional(),
-      description: z.string().min(1).optional(),
-      image_url: z.string().min(1).optional(),
-    }),
+    params: updateMenuItemParamsSchema,
+    body: updateMenuItemBodySchema,
     detail: {
       tags: ["menu"],
       summary: "Update a menu item",
@@ -274,9 +235,7 @@ app.delete(
     return { data: removedMenuItem };
   },
   {
-    params: z.object({
-      id: z.string().regex(/^[0-9]+$/),
-    }),
+    params: deleteMenuItemParamsSchema,
     detail: {
       tags: ["menu"],
       summary: "Delete a menu item",
@@ -421,9 +380,7 @@ app.get(
     return { data: toOrderResponse(order) };
   },
   {
-    params: z.object({
-      id: z.string().regex(/^[0-9]+$/),
-    }),
+    params: getOrderByIdParamsSchema,
     detail: {
       tags: ["orders"],
       summary: "Get order by id",
@@ -484,13 +441,8 @@ app.patch(
     return { data: toOrderResponse(result.order) };
   },
   {
-    params: z.object({
-      id: z.string().regex(/^[0-9]+$/),
-    }),
-    body: z.object({
-      itemId: z.number().int().min(1),
-      qty: z.number().min(0),
-    }),
+    params: updateOrderParamsSchema,
+    body: updateOrderBodySchema,
     detail: {
       tags: ["orders"],
       summary: "Update order item quantity",
@@ -548,9 +500,7 @@ app.post(
     return { data: toOrderResponse(result.order) };
   },
   {
-    params: z.object({
-      id: z.string().regex(/^[0-9]+$/),
-    }),
+    params: submitOrderParamsSchema,
     detail: {
       tags: ["orders"],
       summary: "Submit order",
