@@ -1,0 +1,18 @@
+name: Sync All Branches
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 每天執行
+  workflow_dispatch:      # 允許手動執行
+
+jobs:
+  repo-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync all branches from upstream
+        uses: repo-sync/github-sync@v2
+        with:
+          source_repo: "https://github.com/nschou/bf1042.git"
+          source_branch: "refs/heads/*"
+          destination_branch: "refs/heads/*"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
