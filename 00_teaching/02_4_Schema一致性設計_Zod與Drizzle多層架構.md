@@ -883,6 +883,7 @@ fetch("/api/orders", {
 
 **驗證時間**：2026-05-14 下午  
 **Commit 記錄**：
+
 - `53c0224` - refactor: 實作三層架構分離 (contracts → route-schemas → backend)
 - `076201c` - feat: 移除 email/password 登入，改為純 Google OAuth
 - `16a4ace` - chore: 新增 v8 worktree 至 workspace 設定
@@ -949,6 +950,7 @@ import {
 **修改內容**：
 
 1. **`auth/better-auth.ts`**（5 行修改）
+
    ```typescript
    emailAndPassword: {
      enabled: false,  // ← 禁用 email/password 登入
@@ -990,14 +992,14 @@ $ bun run backend.ts
 
 **影響範圍統計（實測）**：
 
-| 層級          | 檔案                  | 實際修改內容     | 異動行數 | 編譯錯誤 | 功能影響 |
-| ------------- | --------------------- | ---------------- | -------- | -------- | -------- |
-| Auth 層       | `auth/better-auth.ts` | 配置 enabled: false | 1 行     | 0        | ❌ 無    |
-| Frontend UI   | `frontend/src/App.tsx` | 移除登入 UI 組件 | -81 行   | 0        | ❌ 無    |
-| Frontend 業務 | `frontend/src/App.tsx` | -                | **0 行** | 0        | ✅ **零修改** |
-| Backend 業務  | `backend.ts`          | -                | **0 行** | 0        | ✅ **零修改** |
-| API Contract  | `shared/contracts.ts` | -                | **0 行** | 0        | ✅ **零修改** |
-| Store 層      | `store/index.ts`      | -                | **0 行** | 0        | ✅ **零修改** |
+| 層級          | 檔案                   | 實際修改內容        | 異動行數 | 編譯錯誤 | 功能影響      |
+| ------------- | ---------------------- | ------------------- | -------- | -------- | ------------- |
+| Auth 層       | `auth/better-auth.ts`  | 配置 enabled: false | 1 行     | 0        | ❌ 無         |
+| Frontend UI   | `frontend/src/App.tsx` | 移除登入 UI 組件    | -81 行   | 0        | ❌ 無         |
+| Frontend 業務 | `frontend/src/App.tsx` | -                   | **0 行** | 0        | ✅ **零修改** |
+| Backend 業務  | `backend.ts`           | -                   | **0 行** | 0        | ✅ **零修改** |
+| API Contract  | `shared/contracts.ts`  | -                   | **0 行** | 0        | ✅ **零修改** |
+| Store 層      | `store/index.ts`       | -                   | **0 行** | 0        | ✅ **零修改** |
 
 **結果**：✅ 認證方式更換成功，業務邏輯零修改、零編譯錯誤、零功能影響
 
@@ -1058,15 +1060,15 @@ e8ef7d3 Fix Google sign-in redirect flow
 
 **技術驗證結果**：
 
-| 驗證項目           | 預期結果 | 實際結果 | 說明                                   |
-| ------------------ | -------- | -------- | -------------------------------------- |
-| 編譯錯誤           | 0        | ✅ 0     | 三層架構重構無任何 TypeScript 錯誤     |
-| 業務邏輯修改       | 0 行     | ✅ 0 行  | Frontend/Backend 業務邏輯完全不動      |
-| API Contract 變動  | 0 行     | ✅ 0 行  | SessionUser 結構維持不變               |
-| Store 層影響       | 0 行     | ✅ 0 行  | 只依賴 userId，不關心認證方式          |
-| 前端功能正確性     | 正常     | ✅ 正常  | 登入、購物車、訂單功能完全正常         |
-| Backend 啟動       | 成功     | ✅ 成功  | localhost:3000 正常運行                |
-| OpenAPI 文件生成   | 正常     | ✅ 正常  | /swagger 路徑可正常訪問                |
+| 驗證項目          | 預期結果 | 實際結果 | 說明                               |
+| ----------------- | -------- | -------- | ---------------------------------- |
+| 編譯錯誤          | 0        | ✅ 0     | 三層架構重構無任何 TypeScript 錯誤 |
+| 業務邏輯修改      | 0 行     | ✅ 0 行  | Frontend/Backend 業務邏輯完全不動  |
+| API Contract 變動 | 0 行     | ✅ 0 行  | SessionUser 結構維持不變           |
+| Store 層影響      | 0 行     | ✅ 0 行  | 只依賴 userId，不關心認證方式      |
+| 前端功能正確性    | 正常     | ✅ 正常  | 登入、購物車、訂單功能完全正常     |
+| Backend 啟動      | 成功     | ✅ 成功  | localhost:3000 正常運行            |
+| OpenAPI 文件生成  | 正常     | ✅ 正常  | /swagger 路徑可正常訪問            |
 
 **架構健壯性評估**：
 
