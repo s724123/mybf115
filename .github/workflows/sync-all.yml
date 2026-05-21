@@ -3,16 +3,25 @@ name: Sync All Branches
 on:
   schedule:
     - cron: '0 0 * * *' # 每天執行
-  workflow_dispatch:      # 允許手動執行
+  workflow_dispatch:      # 允許手動點擊執行
 
 jobs:
   repo-sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # 必須要有寫入權限才能 push 更新
+
     steps:
-      - name: Sync all branches from upstream
-        uses: repo-sync/github-sync@v2
+      # 【最重要的一步！】：先把你的專案代碼下載到虛擬機中
+      - name: Checkout target repo
+        uses: actions/checkout@v4
         with:
-          source_repo: "https://github.com/nschou/bf1042.git"
-          source_branch: "refs/heads/*"
-          destination_branch: "refs/heads/*"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0 # 0 代表下載所有分支的歷史紀錄，全分支同步必須加這行
+
+      # 執行全分支同步
+      - name: Sync all branches from upstream
+        uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          target_repo_url: "https://github.com/s724123/mybf115.git" # 你的倉庫
+          source_repo_url: "https://github.com/nschou/bf1042.git"   # 原作者的倉庫
+          git_access_token: ${{ secrets.GITHUB_TOKEN }}
