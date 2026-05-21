@@ -14,7 +14,7 @@
     "build:frontend": "cd frontend && bun run build",
     "build:backend": "bun build ./backend.ts --outdir ./dist",
     "build": "bun run build:frontend && bun run build:backend",
-    "start": "bun dist/backend.js",
+    "start": "bun dist/backend.ts",
     "preview:frontend": "cd frontend && bun run preview",
     "v8:db:setup": "bun scripts/setup-v8-legacy-db.ts",
     "db:generate": "drizzle-kit generate",
