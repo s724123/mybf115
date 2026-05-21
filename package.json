@@ -18,8 +18,9 @@
     "preview:frontend": "cd frontend && bun run preview",
     "v8:db:setup": "bun scripts/setup-v8-legacy-db.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:migrate:manual": "bun scripts/run-migration.ts"
+    "db:migrate": "bun scripts/run-migration.ts",
+    "db:migrate:manual": "bun scripts/run-migration.ts",
+    "check:db": "bun scripts/check-db.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -1,17 +1,21 @@
 /**
  * scripts/run-migration.ts
  *
- * 備案 migration 腳本：當 drizzle-kit migrate 因 @neondatabase/serverless
- * WebSocket 問題靜默失敗時，直接讀取 SQL 檔並透過 Pool 執行。
+ * 使用 drizzle-orm 原生 migrate() 取代 drizzle-kit migrate CLI，
+ * 可避免 @neondatabase/serverless WebSocket 在 Node.js/Bun 環境下的問題。
+ * 並正確寫入 drizzle.__drizzle_migrations 追蹤表，防止重複套用。
  *
  * 用法：bun scripts/run-migration.ts
  */
 
 import { neonConfig, Pool } from "@neondatabase/serverless";
-import { readdir, readFile } from "node:fs/promises";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import { migrate } from "drizzle-orm/neon-serverless/migrator";
+import { readMigrationFiles } from "drizzle-orm/migrator";
 import { join } from "node:path";
 import ws from "ws";
 
+// Node.js / Bun 環境下必須手動指定 WebSocket 實作
 neonConfig.webSocketConstructor = ws;
 
 const DATABASE_URL =
@@ -23,97 +27,85 @@ if (!DATABASE_URL) {
 }
 
 const DRIZZLE_DIR = join(import.meta.dir, "..", "drizzle");
-const JOURNAL_PATH = join(DRIZZLE_DIR, "meta", "_journal.json");
-
-interface JournalEntry {
-  idx: number;
-  version: string;
-  when: number;
-  tag: string;
-  breakpoints: boolean;
-}
-
-interface Journal {
-  version: string;
-  dialect: string;
-  entries: JournalEntry[];
-}
-
+const pgSchema = process.env.PG_SCHEMA ?? "public";
 const pool = new Pool({ connectionString: DATABASE_URL });
 
 async function main() {
   const client = await pool.connect();
 
   try {
-    // 建立 drizzle migrations 追蹤 schema（若不存在）
+    // 1. 確保 app schema 存在（migrate() 不自動建立）
+    if (pgSchema !== "public") {
+      console.log(`[setup] Ensuring schema "${pgSchema}" exists...`);
+      await client.query(`CREATE SCHEMA IF NOT EXISTS "${pgSchema}"`);
+    }
+
+    // 2. 確保 drizzle 追蹤 schema 和 table 存在
     await client.query(`CREATE SCHEMA IF NOT EXISTS drizzle`);
     await client.query(`
       CREATE TABLE IF NOT EXISTS drizzle."__drizzle_migrations" (
-        id       serial  PRIMARY KEY,
-        hash     text    NOT NULL,
+        id         SERIAL PRIMARY KEY,
+        hash       text   NOT NULL,
         created_at bigint
       )
     `);
 
-    // 建立應用 schema（若不存在）
-    const pgSchema = process.env.PG_SCHEMA ?? "public";
-    if (pgSchema !== "public") {
-      console.log(`[setup] Creating schema "${pgSchema}" if not exists...`);
-      await client.query(`CREATE SCHEMA IF NOT EXISTS "${pgSchema}"`);
-    }
+    // 3. 偵測「舊腳本已套用 tables 但未寫追蹤記錄」的情況
+    //    舊腳本會建立 tables 但不插入 __drizzle_migrations 記錄，
+    //    導致 migrate() 誤以為未套用而再試一次（CREATE TABLE 失敗）。
+    const { rows: trackingRows } = await client.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM drizzle."__drizzle_migrations"`,
+    );
+    const trackingCount = parseInt(trackingRows[0]!.count, 10);
 
-    const journalText = await readFile(JOURNAL_PATH, "utf-8");
-    const journal = JSON.parse(journalText) as Journal;
-
-    for (const entry of journal.entries) {
-      const sqlPath = join(DRIZZLE_DIR, `${entry.tag}.sql`);
-
-      // 逐步執行每個 statement（以 --> statement-breakpoint 分割）
-      const sqlText = await readFile(sqlPath, "utf-8");
-      const statements = sqlText
-        .split("--> statement-breakpoint")
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      console.log(
-        `\n[migration] ${entry.tag} (${statements.length} statements)`,
+    if (trackingCount === 0) {
+      // 檢查 app schema 的 table 是否已存在
+      const { rows: tableRows } = await client.query<{ count: string }>(
+        `
+        SELECT COUNT(*)::text AS count
+        FROM   information_schema.tables
+        WHERE  table_schema = $1
+          AND  table_name   IN ('users', 'menu_items', 'orders', 'order_items')
+      `,
+        [pgSchema],
       );
+      const tableCount = parseInt(tableRows[0]!.count, 10);
 
-      await client.query("BEGIN");
-
-      for (let i = 0; i < statements.length; i++) {
-        const stmt = statements[i]!;
-        console.log(`  [${i + 1}/${statements.length}] executing...`);
-        try {
-          await client.query(stmt);
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          // 若表/schema 已存在則繼續，其他錯誤則中止
-          if (
-            msg.includes("already exists") ||
-            msg.includes("duplicate_table")
-          ) {
-            console.warn(`  [skip] already exists: ${msg.split("\n")[0]}`);
-          } else {
-            console.error(`  [error] ${msg}`);
-            await client.query("ROLLBACK");
-            throw err;
-          }
+      if (tableCount > 0) {
+        // Tables 已存在但追蹤表是空的 → 補填追蹤記錄
+        console.log(
+          `[info] Tables already exist (${tableCount}/4) but not tracked. ` +
+            `Registering migrations...`,
+        );
+        const migrations = readMigrationFiles({
+          migrationsFolder: DRIZZLE_DIR,
+        });
+        for (const migration of migrations) {
+          await client.query(
+            `INSERT INTO drizzle."__drizzle_migrations" (hash, created_at) VALUES ($1, $2)`,
+            [migration.hash, migration.folderMillis],
+          );
+          console.log(
+            `  [✓] Registered: hash=${migration.hash.slice(0, 12)}...  ts=${migration.folderMillis}`,
+          );
         }
       }
-
-      await client.query("COMMIT");
-      console.log(`  [✓] ${entry.tag} applied`);
     }
-
-    console.log("\n[✓] All migrations applied successfully.");
   } finally {
     client.release();
-    await pool.end();
   }
+
+  // 4. 執行正式 migrate()：只套用尚未追蹤的 migration，並寫入追蹤記錄
+  const db = drizzle({ client: pool });
+  console.log(`\n[migration] Applying migrations from ${DRIZZLE_DIR} ...`);
+  await migrate(db, { migrationsFolder: DRIZZLE_DIR });
+
+  console.log("[✓] All migrations applied successfully.");
+  await pool.end();
 }
 
 main().catch((err) => {
   console.error("[FATAL]", err);
+  pool.end().catch(() => {});
   process.exit(1);
 });
