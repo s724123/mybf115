@@ -1,0 +1,399 @@
+{
+  "configuration" : { },
+  "description" : "Breakfast Shop Ordering System — 教學示範版前後端分離架構 (V7)",
+  "documentation" : { },
+  "id" : 1,
+  "lastModifiedDate" : "2026-06-10T06:12:24Z",
+  "model" : {
+    "people" : [ {
+      "description" : "使用網頁瀏覽菜單、加入購物車、登入帳號、建立並送出訂單的一般使用者。",
+      "id" : "1",
+      "name" : "顧客",
+      "properties" : {
+        "structurizr.dsl.identifier" : "customer"
+      },
+      "relationships" : [ {
+        "description" : "瀏覽菜單、建立並送出訂單",
+        "destinationId" : "3",
+        "id" : "13",
+        "sourceId" : "1",
+        "tags" : "Relationship",
+        "technology" : "HTTPS / Browser"
+      }, {
+        "description" : "瀏覽菜單、建立並送出訂單",
+        "destinationId" : "2",
+        "id" : "14",
+        "linkedRelationshipId" : "13",
+        "sourceId" : "1",
+        "technology" : "HTTPS / Browser"
+      } ],
+      "tags" : "Element,Person"
+    } ],
+    "softwareSystems" : [ {
+      "containers" : [ {
+        "description" : "在瀏覽器中執行的 React 應用，提供菜單瀏覽、購物車操作、示範型登入、訂單建立與送出、歷史訂單查詢介面。開發期間透過 Vite dev proxy 轉發 /api 請求；正式部署後由後端伺服器靜態服務。",
+        "documentation" : { },
+        "id" : "3",
+        "name" : "SPA 前端",
+        "properties" : {
+          "structurizr.dsl.identifier" : "spa"
+        },
+        "relationships" : [ {
+          "description" : "呼叫 REST API",
+          "destinationId" : "4",
+          "id" : "15",
+          "sourceId" : "3",
+          "tags" : "Relationship",
+          "technology" : "HTTP/JSON"
+        }, {
+          "description" : "import type MenuItem, Order, User 等共用型別",
+          "destinationId" : "11",
+          "id" : "25",
+          "sourceId" : "3",
+          "tags" : "Relationship",
+          "technology" : "TypeScript (compile-time)"
+        } ],
+        "tags" : "Element,Container,Browser",
+        "technology" : "React 19, TypeScript, Vite 5, TailwindCSS, DaisyUI"
+      }, {
+        "components" : [ {
+          "description" : "V7 正式入口。定義全部 HTTP 路由（/api/auth、/api/menu、/api/orders、/health）、Elysia t.Object request/response schema、OPTIONS preflight handler、onAfterHandle CORS 中介層及 SPA fallback (*) 路由。",
+          "documentation" : { },
+          "id" : "5",
+          "name" : "路由層 (backend.ts)",
+          "properties" : {
+            "structurizr.dsl.identifier" : "routeLayer"
+          },
+          "relationships" : [ {
+            "description" : "呼叫 store 方法（login、menu CRUD、order CRUD、submit）",
+            "destinationId" : "6",
+            "id" : "17",
+            "sourceId" : "5",
+            "tags" : "Relationship",
+            "technology" : "TypeScript"
+          }, {
+            "description" : "app.use(openapi(...)) 掛載外掛",
+            "destinationId" : "9",
+            "id" : "18",
+            "sourceId" : "5",
+            "tags" : "Relationship"
+          }, {
+            "description" : "app.use(staticPlugin(...)) 掛載外掛",
+            "destinationId" : "10",
+            "id" : "19",
+            "sourceId" : "5",
+            "tags" : "Relationship"
+          }, {
+            "description" : "import type Order, OrderResponse",
+            "destinationId" : "11",
+            "id" : "20",
+            "sourceId" : "5",
+            "tags" : "Relationship"
+          }, {
+            "description" : "createStore({ dataFilePath }) 取得 store 實例",
+            "destinationId" : "7",
+            "id" : "22",
+            "sourceId" : "5",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "Elysia routes"
+        }, {
+          "description" : "資料存取的抽象契約。定義 login()、getUserById()、getMenu()/createMenuItem()/updateMenuItem()/deleteMenuItem()、getOrders()/getCurrentOrderByUserId()/getOrderHistoryByUserId()/createOrder()/updateOrderItem()/submitOrder() 等方法簽名。路由層只依賴此介面，不依賴實作。",
+          "documentation" : { },
+          "id" : "6",
+          "name" : "Store 介面 (store/Store.ts)",
+          "properties" : {
+            "structurizr.dsl.identifier" : "storeInterface"
+          },
+          "tags" : "Element,Component",
+          "technology" : "TypeScript interface"
+        }, {
+          "description" : "工廠函式 createStore()，回傳型別固定為 Store 介面，將路由層與具體實作解耦。目前綁定至 JsonFileStore；未來可無痛替換成 Drizzle + Neon 等資料庫版本。",
+          "documentation" : { },
+          "id" : "7",
+          "name" : "Store 工廠 (store/index.ts)",
+          "properties" : {
+            "structurizr.dsl.identifier" : "storeFactory"
+          },
+          "relationships" : [ {
+            "description" : "new JsonFileStore(options) 建立實例",
+            "destinationId" : "8",
+            "id" : "21",
+            "sourceId" : "7",
+            "tags" : "Relationship"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "TypeScript factory function"
+        }, {
+          "description" : "Store 介面的 JSON 檔案實作。含 init()（啟動時載入或初始化預設資料）、tmp + rename 原子寫入（防止崩潰損壞）、Promise chain persist queue（串列化防並發衝突）。",
+          "documentation" : { },
+          "id" : "8",
+          "name" : "JsonFileStore (store/json/JsonFileStore.ts)",
+          "properties" : {
+            "structurizr.dsl.identifier" : "jsonFileStore"
+          },
+          "relationships" : [ {
+            "description" : "implements Store 介面",
+            "destinationId" : "6",
+            "id" : "23",
+            "sourceId" : "8",
+            "tags" : "Relationship"
+          }, {
+            "description" : "讀寫 data/store.json",
+            "destinationId" : "12",
+            "id" : "24",
+            "sourceId" : "8",
+            "tags" : "Relationship",
+            "technology" : "Bun.file() / Bun.write()"
+          } ],
+          "tags" : "Element,Component",
+          "technology" : "TypeScript class, Bun file API"
+        }, {
+          "description" : "透過 @elysiajs/openapi 將 route schema 與 detail 標注輸出為 Swagger UI（GET /openapi）與機器可讀 JSON 規格（GET /openapi/json）。",
+          "documentation" : { },
+          "id" : "9",
+          "name" : "OpenAPI 外掛",
+          "properties" : {
+            "structurizr.dsl.identifier" : "openApiPlugin"
+          },
+          "tags" : "Element,Component",
+          "technology" : "@elysiajs/openapi 1.x"
+        }, {
+          "description" : "透過 @elysiajs/static 服務 public/ 目錄，包含前端 Vite build 產物（index.html、JS bundle、CSS）與菜單圖片（.webp / .jpg）。",
+          "documentation" : { },
+          "id" : "10",
+          "name" : "Static 外掛",
+          "properties" : {
+            "structurizr.dsl.identifier" : "staticPlugin"
+          },
+          "tags" : "Element,Component",
+          "technology" : "@elysiajs/static 1.x"
+        }, {
+          "description" : "前後端共用的 TypeScript 介面定義：MenuItem（含 description、image_url）、User、Order（含 userId、status union、submittedAt）、OrderResponse、ApiDataResponse<T>、ApiErrorResponse。是 API 資料形狀的唯一真實來源（single source of truth）。",
+          "documentation" : { },
+          "id" : "11",
+          "name" : "共用型別契約 (shared/contracts.ts)",
+          "properties" : {
+            "structurizr.dsl.identifier" : "sharedContracts"
+          },
+          "tags" : "Element,Component",
+          "technology" : "TypeScript interfaces"
+        } ],
+        "description" : "處理全部 REST API 請求，包含示範型身份驗證、菜單 CRUD、訂單操作（建立／更新品項／送出）；同時靜態服務前端 build 產物與菜單圖片，並掛載 OpenAPI/Swagger UI。",
+        "documentation" : { },
+        "id" : "4",
+        "name" : "後端 API 伺服器",
+        "properties" : {
+          "structurizr.dsl.identifier" : "apiServer"
+        },
+        "relationships" : [ {
+          "description" : "讀取 / 持久化資料",
+          "destinationId" : "12",
+          "id" : "16",
+          "sourceId" : "4",
+          "tags" : "Relationship",
+          "technology" : "Bun file API (local filesystem)"
+        } ],
+        "tags" : "Element,Container",
+        "technology" : "Bun runtime, Elysia framework, TypeScript"
+      }, {
+        "description" : "以 data/store.json 單一 JSON 檔案儲存菜單（含圖片路徑與描述）、訂單（含使用者歸屬與狀態）、示範型使用者帳號，以及 menuIdCounter / orderIdCounter 自增計數器。由 JsonFileStore 負責原子讀寫與 counter 復原。",
+        "documentation" : { },
+        "id" : "12",
+        "name" : "JSON 檔案資料庫",
+        "properties" : {
+          "structurizr.dsl.identifier" : "fileStore"
+        },
+        "tags" : "Element,Container,Database",
+        "technology" : "data/store.json, Bun file API (local filesystem)"
+      } ],
+      "description" : "前後端分離的早餐店點餐平台，支援菜單瀏覽、個人訂單管理、歷史訂單查詢，並提供 OpenAPI/Swagger 文件（V7 示範版）。",
+      "documentation" : { },
+      "id" : "2",
+      "name" : "早餐店點餐系統",
+      "properties" : {
+        "structurizr.dsl.identifier" : "breakfastSystem"
+      },
+      "tags" : "Element,Software System"
+    } ]
+  },
+  "name" : "早餐店點餐系統",
+  "properties" : {
+    "structurizr.inspection.error" : "9",
+    "structurizr.dsl" : "d29ya3NwYWNlICLml6nppJDlupfpu57ppJDns7vntbEiICJCcmVha2Zhc3QgU2hvcCBPcmRlcmluZyBTeXN0ZW0g4oCUIOaVmeWtuOekuuevhOeJiOWJjeW+jOerr+WIhumbouaetuaniyAoVjcpIiB7CgogICAgbW9kZWwgewoKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICMgUGVvcGxlCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKCiAgICAgICAgY3VzdG9tZXIgPSBwZXJzb24gIumhp+WuoiIgIuS9v+eUqOe2sumggeeAj+imveiPnOWWruOAgeWKoOWFpeizvOeJqei7iuOAgeeZu+WFpeW4s+iZn+OAgeW7uueri+S4pumAgeWHuuioguWWrueahOS4gOiIrOS9v+eUqOiAheOAgiIKCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIFNvZnR3YXJlIFN5c3RlbQogICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACgogICAgICAgIGJyZWFrZmFzdFN5c3RlbSA9IHNvZnR3YXJlU3lzdGVtICLml6nppJDlupfpu57ppJDns7vntbEiICLliY3lvoznq6/liIbpm6LnmoTml6nppJDlupfpu57ppJDlubPlj7DvvIzmlK/mj7Toj5zllq7ngI/opr3jgIHlgIvkurroqILllq7nrqHnkIbjgIHmrbflj7LoqILllq7mn6XoqaLvvIzkuKbmj5DkvpsgT3BlbkFQSS9Td2FnZ2VyIOaWh+S7tu+8iFY3IOekuuevhOeJiO+8ieOAgiIgewoKICAgICAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAgICAgIyBDb250YWluZXJzCiAgICAgICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACgogICAgICAgICAgICBzcGEgPSBjb250YWluZXIgIlNQQSDliY3nq68iICLlnKjngI/opr3lmajkuK3ln7fooYznmoQgUmVhY3Qg5oeJ55So77yM5o+Q5L6b6I+c5Zau54CP6Ka944CB6LO854mp6LuK5pON5L2c44CB56S656+E5Z6L55m75YWl44CB6KiC5Zau5bu656uL6IiH6YCB5Ye644CB5q235Y+y6KiC5Zau5p+l6Kmi5LuL6Z2i44CC6ZaL55m85pyf6ZaT6YCP6YGOIFZpdGUgZGV2IHByb3h5IOi9ieeZvCAvYXBpIOiri+axgu+8m+ato+W8j+mDqOe9suW+jOeUseW+jOerr+S8uuacjeWZqOmdnOaFi+acjeWLmeOAgiIgIlJlYWN0IDE5LCBUeXBlU2NyaXB0LCBWaXRlIDUsIFRhaWx3aW5kQ1NTLCBEYWlzeVVJIiB7CiAgICAgICAgICAgICAgICB0YWdzICJCcm93c2VyIgogICAgICAgICAgICB9CgogICAgICAgICAgICBhcGlTZXJ2ZXIgPSBjb250YWluZXIgIuW+jOerryBBUEkg5Ly65pyN5ZmoIiAi6JmV55CG5YWo6YOoIFJFU1QgQVBJIOiri+axgu+8jOWMheWQq+ekuuevhOWei+i6q+S7vempl+itieOAgeiPnOWWriBDUlVE44CB6KiC5Zau5pON5L2c77yI5bu656uL77yP5pu05paw5ZOB6aCF77yP6YCB5Ye677yJ77yb5ZCM5pmC6Z2c5oWL5pyN5YuZ5YmN56uvIGJ1aWxkIOeUoueJqeiIh+iPnOWWruWclueJh++8jOS4puaOm+i8iSBPcGVuQVBJL1N3YWdnZXIgVUnjgIIiICJCdW4gcnVudGltZSwgRWx5c2lhIGZyYW1ld29yaywgVHlwZVNjcmlwdCIgewoKICAgICAgICAgICAgICAgIHJvdXRlTGF5ZXIgPSBjb21wb25lbnQgIui3r+eUseWxpCAoYmFja2VuZC50cykiICJWNyDmraPlvI/lhaXlj6PjgILlrprnvqnlhajpg6ggSFRUUCDot6/nlLHvvIgvYXBpL2F1dGjjgIEvYXBpL21lbnXjgIEvYXBpL29yZGVyc+OAgS9oZWFsdGjvvInjgIFFbHlzaWEgdC5PYmplY3QgcmVxdWVzdC9yZXNwb25zZSBzY2hlbWHjgIFPUFRJT05TIHByZWZsaWdodCBoYW5kbGVy44CBb25BZnRlckhhbmRsZSBDT1JTIOS4reS7i+WxpOWPiiBTUEEgZmFsbGJhY2sgKCopIOi3r+eUseOAgiIgIkVseXNpYSByb3V0ZXMiCgogICAgICAgICAgICAgICAgc3RvcmVJbnRlcmZhY2UgPSBjb21wb25lbnQgIlN0b3JlIOS7i+mdoiAoc3RvcmUvU3RvcmUudHMpIiAi6LOH5paZ5a2Y5Y+W55qE5oq96LGh5aWR57SE44CC5a6a576pIGxvZ2luKCnjgIFnZXRVc2VyQnlJZCgp44CBZ2V0TWVudSgpL2NyZWF0ZU1lbnVJdGVtKCkvdXBkYXRlTWVudUl0ZW0oKS9kZWxldGVNZW51SXRlbSgp44CBZ2V0T3JkZXJzKCkvZ2V0Q3VycmVudE9yZGVyQnlVc2VySWQoKS9nZXRPcmRlckhpc3RvcnlCeVVzZXJJZCgpL2NyZWF0ZU9yZGVyKCkvdXBkYXRlT3JkZXJJdGVtKCkvc3VibWl0T3JkZXIoKSDnrYnmlrnms5XnsL3lkI3jgILot6/nlLHlsaTlj6rkvp3os7TmraTku4vpnaLvvIzkuI3kvp3os7Tlr6bkvZzjgIIiICJUeXBlU2NyaXB0IGludGVyZmFjZSIKCiAgICAgICAgICAgICAgICBzdG9yZUZhY3RvcnkgPSBjb21wb25lbnQgIlN0b3JlIOW3peW7oCAoc3RvcmUvaW5kZXgudHMpIiAi5bel5bug5Ye95byPIGNyZWF0ZVN0b3JlKCnvvIzlm57lgrPlnovliKXlm7rlrprngrogU3RvcmUg5LuL6Z2i77yM5bCH6Lev55Sx5bGk6IiH5YW36auU5a+m5L2c6Kej6ICm44CC55uu5YmN57aB5a6a6IezIEpzb25GaWxlU3RvcmXvvJvmnKrkvoblj6/nhKHnl5vmm7/mj5vmiJAgRHJpenpsZSArIE5lb24g562J6LOH5paZ5bqr54mI5pys44CCIiAiVHlwZVNjcmlwdCBmYWN0b3J5IGZ1bmN0aW9uIgoKICAgICAgICAgICAgICAgIGpzb25GaWxlU3RvcmUgPSBjb21wb25lbnQgIkpzb25GaWxlU3RvcmUgKHN0b3JlL2pzb24vSnNvbkZpbGVTdG9yZS50cykiICJTdG9yZSDku4vpnaLnmoQgSlNPTiDmqpTmoYjlr6bkvZzjgILlkKsgaW5pdCgp77yI5ZWf5YuV5pmC6LyJ5YWl5oiW5Yid5aeL5YyW6aCQ6Kit6LOH5paZ77yJ44CBdG1wICsgcmVuYW1lIOWOn+WtkOWvq+WFpe+8iOmYsuatouW0qea9sOaQjeWjnu+8ieOAgVByb21pc2UgY2hhaW4gcGVyc2lzdCBxdWV1Ze+8iOS4suWIl+WMlumYsuS4pueZvOihneeqge+8ieOAgiIgIlR5cGVTY3JpcHQgY2xhc3MsIEJ1biBmaWxlIEFQSSIKCiAgICAgICAgICAgICAgICBvcGVuQXBpUGx1Z2luID0gY29tcG9uZW50ICJPcGVuQVBJIOWkluaOmyIgIumAj+mBjiBAZWx5c2lhanMvb3BlbmFwaSDlsIcgcm91dGUgc2NoZW1hIOiIhyBkZXRhaWwg5qiZ5rOo6Ly45Ye654K6IFN3YWdnZXIgVUnvvIhHRVQgL29wZW5hcGnvvInoiIfmqZ/lmajlj6/oroAgSlNPTiDopo/moLzvvIhHRVQgL29wZW5hcGkvanNvbu+8ieOAgiIgIkBlbHlzaWFqcy9vcGVuYXBpIDEueCIKCiAgICAgICAgICAgICAgICBzdGF0aWNQbHVnaW4gPSBjb21wb25lbnQgIlN0YXRpYyDlpJbmjpsiICLpgI/pgY4gQGVseXNpYWpzL3N0YXRpYyDmnI3li5kgcHVibGljLyDnm67pjITvvIzljIXlkKvliY3nq68gVml0ZSBidWlsZCDnlKLnianvvIhpbmRleC5odG1s44CBSlMgYnVuZGxl44CBQ1NT77yJ6IiH6I+c5Zau5ZyW54mH77yILndlYnAgLyAuanBn77yJ44CCIiAiQGVseXNpYWpzL3N0YXRpYyAxLngiCgogICAgICAgICAgICAgICAgc2hhcmVkQ29udHJhY3RzID0gY29tcG9uZW50ICLlhbHnlKjlnovliKXlpZHntIQgKHNoYXJlZC9jb250cmFjdHMudHMpIiAi5YmN5b6M56uv5YWx55So55qEIFR5cGVTY3JpcHQg5LuL6Z2i5a6a576p77yaTWVudUl0ZW3vvIjlkKsgZGVzY3JpcHRpb27jgIFpbWFnZV91cmzvvInjgIFVc2Vy44CBT3JkZXLvvIjlkKsgdXNlcklk44CBc3RhdHVzIHVuaW9u44CBc3VibWl0dGVkQXTvvInjgIFPcmRlclJlc3BvbnNl44CBQXBpRGF0YVJlc3BvbnNlPFQ+44CBQXBpRXJyb3JSZXNwb25zZeOAguaYryBBUEkg6LOH5paZ5b2i54uA55qE5ZSv5LiA55yf5a+m5L6G5rqQ77yIc2luZ2xlIHNvdXJjZSBvZiB0cnV0aO+8ieOAgiIgIlR5cGVTY3JpcHQgaW50ZXJmYWNlcyIKICAgICAgICAgICAgfQoKICAgICAgICAgICAgZmlsZVN0b3JlID0gY29udGFpbmVyICJKU09OIOaqlOahiOizh+aWmeW6qyIgIuS7pSBkYXRhL3N0b3JlLmpzb24g5Zau5LiAIEpTT04g5qqU5qGI5YSy5a2Y6I+c5Zau77yI5ZCr5ZyW54mH6Lev5b6R6IiH5o+P6L+w77yJ44CB6KiC5Zau77yI5ZCr5L2/55So6ICF5q245bGs6IiH54uA5oWL77yJ44CB56S656+E5Z6L5L2/55So6ICF5biz6Jmf77yM5Lul5Y+KIG1lbnVJZENvdW50ZXIgLyBvcmRlcklkQ291bnRlciDoh6rlop7oqIjmlbjlmajjgILnlLEgSnNvbkZpbGVTdG9yZSDosqDosqzljp/lrZDoroDlr6voiIcgY291bnRlciDlvqnljp/jgIIiICJkYXRhL3N0b3JlLmpzb24sIEJ1biBmaWxlIEFQSSAobG9jYWwgZmlsZXN5c3RlbSkiIHsKICAgICAgICAgICAgICAgIHRhZ3MgIkRhdGFiYXNlIgogICAgICAgICAgICB9CiAgICAgICAgfQoKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICMgUmVsYXRpb25zaGlwcyDigJQgU3lzdGVtIENvbnRleHQgbGV2ZWwKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAoKICAgICAgICBjdXN0b21lciAtPiBzcGEgIueAj+imveiPnOWWruOAgeW7uueri+S4pumAgeWHuuioguWWriIgIkhUVFBTIC8gQnJvd3NlciIKICAgICAgICBzcGEgLT4gYXBpU2VydmVyICLlkbzlj6sgUkVTVCBBUEkiICJIVFRQL0pTT04iCiAgICAgICAgYXBpU2VydmVyIC0+IGZpbGVTdG9yZSAi6K6A5Y+WIC8g5oyB5LmF5YyW6LOH5paZIiAiQnVuIGZpbGUgQVBJIChsb2NhbCBmaWxlc3lzdGVtKSIKCiAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAjIFJlbGF0aW9uc2hpcHMg4oCUIENvbXBvbmVudCBsZXZlbCAod2l0aGluIGFwaVNlcnZlcikKICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAoKICAgICAgICByb3V0ZUxheWVyIC0+IHN0b3JlSW50ZXJmYWNlICLlkbzlj6sgc3RvcmUg5pa55rOV77yIbG9naW7jgIFtZW51IENSVUTjgIFvcmRlciBDUlVE44CBc3VibWl077yJIiAiVHlwZVNjcmlwdCIKICAgICAgICByb3V0ZUxheWVyIC0+IG9wZW5BcGlQbHVnaW4gImFwcC51c2Uob3BlbmFwaSguLi4pKSDmjpvovInlpJbmjpsiCiAgICAgICAgcm91dGVMYXllciAtPiBzdGF0aWNQbHVnaW4gImFwcC51c2Uoc3RhdGljUGx1Z2luKC4uLikpIOaOm+i8ieWkluaOmyIKICAgICAgICByb3V0ZUxheWVyIC0+IHNoYXJlZENvbnRyYWN0cyAiaW1wb3J0IHR5cGUgT3JkZXIsIE9yZGVyUmVzcG9uc2UiCiAgICAgICAgc3RvcmVGYWN0b3J5IC0+IGpzb25GaWxlU3RvcmUgIm5ldyBKc29uRmlsZVN0b3JlKG9wdGlvbnMpIOW7uueri+WvpuS+iyIKICAgICAgICByb3V0ZUxheWVyIC0+IHN0b3JlRmFjdG9yeSAiY3JlYXRlU3RvcmUoeyBkYXRhRmlsZVBhdGggfSkg5Y+W5b6XIHN0b3JlIOWvpuS+iyIKICAgICAgICBqc29uRmlsZVN0b3JlIC0+IHN0b3JlSW50ZXJmYWNlICJpbXBsZW1lbnRzIFN0b3JlIOS7i+mdoiIKICAgICAgICBqc29uRmlsZVN0b3JlIC0+IGZpbGVTdG9yZSAi6K6A5a+rIGRhdGEvc3RvcmUuanNvbiIgIkJ1bi5maWxlKCkgLyBCdW4ud3JpdGUoKSIKICAgICAgICBzcGEgLT4gc2hhcmVkQ29udHJhY3RzICJpbXBvcnQgdHlwZSBNZW51SXRlbSwgT3JkZXIsIFVzZXIg562J5YWx55So5Z6L5YilIiAiVHlwZVNjcmlwdCAoY29tcGlsZS10aW1lKSIKICAgIH0KCiAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgIyBWaWV3cwogICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKCiAgICB2aWV3cyB7CgogICAgICAgIHN5c3RlbUNvbnRleHQgYnJlYWtmYXN0U3lzdGVtICJTeXN0ZW1Db250ZXh0IiAi5pep6aSQ5bqX6bue6aSQ57O757WxIOKAlCBTeXN0ZW0gQ29udGV4dO+8iEM0IExldmVsIDHvvIkiIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgICAgIGF1dG9MYXlvdXQgdGIKICAgICAgICB9CgogICAgICAgIGNvbnRhaW5lciBicmVha2Zhc3RTeXN0ZW0gIkNvbnRhaW5lclZpZXciICLml6nppJDlupfpu57ppJDns7vntbEg4oCUIENvbnRhaW5lciBWaWV377yIQzQgTGV2ZWwgMu+8iSIgewogICAgICAgICAgICBpbmNsdWRlICoKICAgICAgICAgICAgYXV0b0xheW91dCBscgogICAgICAgIH0KCiAgICAgICAgY29tcG9uZW50IGFwaVNlcnZlciAiQmFja2VuZENvbXBvbmVudHMiICLlvoznq68gQVBJIOS8uuacjeWZqCDigJQgQ29tcG9uZW50IFZpZXfvvIhDNCBMZXZlbCAz77yJIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgICAgICBhdXRvTGF5b3V0IGxyCiAgICAgICAgfQoKICAgICAgICBzdHlsZXMgewogICAgICAgICAgICBlbGVtZW50ICJQZXJzb24iIHsKICAgICAgICAgICAgICAgIHNoYXBlIFBlcnNvbgogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjMDg0MjdCCiAgICAgICAgICAgICAgICBjb2xvciAjZmZmZmZmCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCAiU29mdHdhcmUgU3lzdGVtIiB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICMxMTY4QkQKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJDb250YWluZXIiIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzQzOERENQogICAgICAgICAgICAgICAgY29sb3IgI2ZmZmZmZgogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgIkNvbXBvbmVudCIgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjODVCQkYwCiAgICAgICAgICAgICAgICBjb2xvciAjMDAwMDAwCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCAiRGF0YWJhc2UiIHsKICAgICAgICAgICAgICAgIHNoYXBlIEN5bGluZGVyCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM0MzhERDUKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJCcm93c2VyIiB7CiAgICAgICAgICAgICAgICBzaGFwZSBXZWJCcm93c2VyCiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICB9Cn0=",
+    "structurizr.inspection.info" : "0",
+    "structurizr.inspection.ignore" : "0",
+    "structurizr.inspection.warning" : "0"
+  },
+  "views" : {
+    "componentViews" : [ {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "containerId" : "4",
+      "description" : "後端 API 伺服器 — Component View（C4 Level 3）",
+      "elements" : [ {
+        "id" : "3",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "5",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "6",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "7",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "8",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "9",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "10",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "11",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "12",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalContainerBoundariesVisible" : false,
+      "key" : "BackendComponents",
+      "name" : "Component View: 早餐店點餐系統 - 後端 API 伺服器",
+      "order" : 3,
+      "relationships" : [ {
+        "id" : "17"
+      }, {
+        "id" : "18"
+      }, {
+        "id" : "19"
+      }, {
+        "id" : "20"
+      }, {
+        "id" : "21"
+      }, {
+        "id" : "22"
+      }, {
+        "id" : "23"
+      }, {
+        "id" : "24"
+      }, {
+        "id" : "25"
+      } ]
+    } ],
+    "configuration" : {
+      "styles" : {
+        "elements" : [ {
+          "shape" : "WebBrowser",
+          "tag" : "Browser"
+        }, {
+          "background" : "#85bbf0",
+          "color" : "#000000",
+          "tag" : "Component"
+        }, {
+          "background" : "#438dd5",
+          "color" : "#ffffff",
+          "tag" : "Container"
+        }, {
+          "background" : "#438dd5",
+          "color" : "#ffffff",
+          "shape" : "Cylinder",
+          "tag" : "Database"
+        }, {
+          "background" : "#08427b",
+          "color" : "#ffffff",
+          "shape" : "Person",
+          "tag" : "Person"
+        }, {
+          "background" : "#1168bd",
+          "color" : "#ffffff",
+          "tag" : "Software System"
+        } ]
+      },
+      "terminology" : { }
+    },
+    "containerViews" : [ {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "LeftRight",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "description" : "早餐店點餐系統 — Container View（C4 Level 2）",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "3",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "4",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "12",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "externalSoftwareSystemBoundariesVisible" : false,
+      "key" : "ContainerView",
+      "name" : "Container View: 早餐店點餐系統",
+      "order" : 2,
+      "relationships" : [ {
+        "id" : "13"
+      }, {
+        "id" : "15"
+      }, {
+        "id" : "16"
+      } ],
+      "softwareSystemId" : "2"
+    } ],
+    "systemContextViews" : [ {
+      "automaticLayout" : {
+        "edgeSeparation" : 50,
+        "nodeSeparation" : 50,
+        "rankDirection" : "TopBottom",
+        "rankSeparation" : 100,
+        "vertices" : true
+      },
+      "description" : "早餐店點餐系統 — System Context（C4 Level 1）",
+      "elements" : [ {
+        "id" : "1",
+        "x" : 0,
+        "y" : 0
+      }, {
+        "id" : "2",
+        "x" : 0,
+        "y" : 0
+      } ],
+      "enterpriseBoundaryVisible" : true,
+      "key" : "SystemContext",
+      "name" : "System Context View: 早餐店點餐系統",
+      "order" : 1,
+      "relationships" : [ {
+        "id" : "14"
+      } ],
+      "softwareSystemId" : "2"
+    } ]
+  }
+}
