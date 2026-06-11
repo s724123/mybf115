@@ -8,7 +8,7 @@
  */
 
 import { neonConfig, Pool } from "@neondatabase/serverless";
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import ws from "ws";
 
@@ -40,6 +40,17 @@ interface Journal {
 }
 
 const pool = new Pool({ connectionString: DATABASE_URL });
+
+/** 從 SQL 文字中掃描 CREATE TABLE "schema".<table> 用到的所有 schema 名稱 */
+function extractSchemaNames(sql: string): string[] {
+  const found = new Set<string>();
+  const re = /CREATE\s+TABLE\s+"([^"]+)"\./gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(sql)) !== null) {
+    found.add(m[1]!);
+  }
+  return [...found];
+}
 
 async function main() {
   const client = await pool.connect();
@@ -79,31 +90,65 @@ async function main() {
         `\n[migration] ${entry.tag} (${statements.length} statements)`,
       );
 
-      await client.query("BEGIN");
-
-      for (let i = 0; i < statements.length; i++) {
-        const stmt = statements[i]!;
-        console.log(`  [${i + 1}/${statements.length}] executing...`);
-        try {
-          await client.query(stmt);
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          // 若表/schema 已存在則繼續，其他錯誤則中止
-          if (
-            msg.includes("already exists") ||
-            msg.includes("duplicate_table")
-          ) {
-            console.warn(`  [skip] already exists: ${msg.split("\n")[0]}`);
-          } else {
-            console.error(`  [error] ${msg}`);
-            await client.query("ROLLBACK");
-            throw err;
-          }
+      // 在 BEGIN 前，確保此 SQL 中用到的所有 schema 都已建立
+      // （CREATE SCHEMA 不能在 transaction 內執行）
+      const schemasInSql = extractSchemaNames(sqlText);
+      for (const schema of schemasInSql) {
+        if (
+          schema !== "public" &&
+          schema !== pgSchema &&
+          schema !== "drizzle"
+        ) {
+          console.log(`[setup] Creating schema "${schema}" if not exists...`);
+          await client.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
         }
       }
 
-      await client.query("COMMIT");
-      console.log(`  [✓] ${entry.tag} applied`);
+      await client.query("BEGIN");
+
+      let committed = false;
+      try {
+        for (let i = 0; i < statements.length; i++) {
+          const stmt = statements[i]!;
+          const savepointName = `sp_${i}`;
+          console.log(`  [${i + 1}/${statements.length}] executing...`);
+
+          // 每個 statement 前建立 SAVEPOINT，防止單一失敗污染整個 transaction
+          await client.query(`SAVEPOINT ${savepointName}`);
+
+          try {
+            await client.query(stmt);
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (
+              msg.includes("already exists") ||
+              msg.includes("duplicate_table")
+            ) {
+              // 可忽略：回滾到 SAVEPOINT，transaction 保持 active，繼續下一條
+              console.warn(`  [skip] already exists: ${msg.split("\n")[0]}`);
+              await client.query(`ROLLBACK TO SAVEPOINT ${savepointName}`);
+            } else {
+              // 真正的錯誤：回滾整個 transaction 後拋出
+              console.error(`  [error] ${msg}`);
+              await client.query("ROLLBACK");
+              committed = true;
+              throw err;
+            }
+          }
+        }
+
+        await client.query("COMMIT");
+        committed = true;
+        console.log(`  [✓] ${entry.tag} applied`);
+      } finally {
+        if (!committed) {
+          try {
+            await client.query("ROLLBACK");
+          } catch {
+            // 已在 catch 中 ROLLBACK 過，忽略重複呼叫
+          }
+        }
+      }
     }
 
     console.log("\n[✓] All migrations applied successfully.");
