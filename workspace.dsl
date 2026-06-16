@@ -1,8 +1,5 @@
 workspace "早餐店點餐系統" "Breakfast Shop Ordering System — V9 (Better Auth + Drizzle + Neon)" {
 
-    !docs docs
-    !adrs decisions
-
     model {
 
         # ══════════════════════════════════════════════
@@ -70,6 +67,8 @@ workspace "早餐店點餐系統" "Breakfast Shop Ordering System — V9 (Better
                 openApiPlugin = component "OpenAPI 外掛" "透過 @elysiajs/openapi 輸出 Swagger UI（GET /openapi）與 JSON spec（GET /openapi/json）。排除靜態資產路由與 openapi 本身路由。" "@elysiajs/openapi"
 
                 utilModule = component "時區工具 (util.ts)" "toTaipeiDateTime()：使用 Intl.DateTimeFormat sv-SE / Asia/Taipei 將 UTC ISO string 轉換為台北時間字串（YYYY-MM-DD HH:MM:SS 格式），供 toOrderResponse() 使用。" "TypeScript, Intl.DateTimeFormat"
+
+                drizzleConfig = component "Drizzle 遷移設定 (drizzle.config.ts)" "drizzle-kit 設定檔。schema 指向 db/schema.ts 與 db/auth-schema.ts；out 輸出至 drizzle/ 目錄（含 SQL 遷移檔與 meta/ 快照）。使用 DATABASE_URL_MIGRATION 或 DATABASE_URL 作為遷移連線字串。" "drizzle-kit, PostgreSQL"
             }
 
             # ──────────────────────────────────────────
@@ -124,6 +123,9 @@ workspace "早餐店點餐系統" "Breakfast Shop Ordering System — V9 (Better
         # Route Schemas → Shared Contracts
         routeSchemas -> sharedContracts "import menuItemSchema, orderSchema（複用業務 schema）"
         routeSchemas -> utilModule "import toTaipeiDateTime 供 toOrderResponse() 使用"
+        drizzleConfig -> bizSchema "讀取 db/schema.ts 產生遷移 SQL"
+        drizzleConfig -> authSchema "讀取 db/auth-schema.ts 產生遷移 SQL"
+        drizzleConfig -> neonCloud "執行 drizzle-kit push/migrate 時連線至 Neon" "HTTPS"
         spa -> sharedContracts "import type MenuItem, Order, SessionUser（compile-time）" "TypeScript"
 
         # Schema 關聯
