@@ -3,7 +3,7 @@
   "description" : "Breakfast Shop Ordering System — V9 (Better Auth + Drizzle + Neon)",
   "documentation" : { },
   "id" : 1,
-  "lastModifiedDate" : "2026-06-16T09:37:44Z",
+  "lastModifiedDate" : "2026-06-16T12:36:37Z",
   "model" : {
     "people" : [ {
       "description" : "透過網頁瀏覽菜單、加入購物車、以 Google 帳號登入、建立並送出訂單的一般使用者。",

@@ -13,7 +13,7 @@
     "build:frontend": "cd frontend && bun run build",
     "build:backend": "bun build ./backend.ts --outdir ./dist --target=bun",
     "build": "bun run build:frontend && bun run build:backend",
-    "start": "bun dist/backend.js",
+    "start": "bun ./backend.js",
     "preview:frontend": "cd frontend && bun run preview",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
