@@ -23,6 +23,7 @@ import {
 } from "./shared/route-schemas.ts";
 import { createStore } from "./store/index.ts";
 import { auth, getCurrentUser } from "./auth/better-auth.ts";
+import type { Role } from "./shared/contracts.ts";
 
 // 從環境變量獲取配置
 const port = parseInt(process.env.PORT || "3000", 10);
@@ -33,7 +34,9 @@ const hasPublicAssets =
   existsSync("./public") && existsSync("./public/index.html");
 
 // ─── Auth Helper ──────────────────────────────────────────────────────────────
-// 簡化的 helper 函數，用於保護路由並獲取 user，失敗時拋出 401 錯誤
+// ─── Auth Helpers ────────────────────────────────────────────────────────────────────────────────
+// 第2事實：權限檢查屬於 API 規格的一部分，就像「價格必須大於 0」是業務規則一樣。
+// requireUser ：瞥名，失敗時拋出 401
 async function requireUser(request: Request) {
   const user = await getCurrentUser(request);
   if (!user) {
@@ -44,6 +47,30 @@ async function requireUser(request: Request) {
   }
   return user;
 }
+
+// requireAnyRole：用戶必須擁有其中一個指定角色，否則拋出 403
+function requireAnyRole(
+  user: Awaited<ReturnType<typeof requireUser>>,
+  roles: Role[],
+) {
+  const hasRole = user.roles.some((r) => (roles as string[]).includes(r));
+  if (!hasRole) {
+    throw new Response(
+      JSON.stringify({
+        error: "Forbidden",
+        message: `需要角色：${roles.join(", ")}`,
+      }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+}
+
+// 具備提升權限的角色（可跟越 ownership 限制）
+const ELEVATED_ROLES: Role[] = ["staff", "owner", "admin"];
+// 可以管理菜單的角色
+const MENU_MANAGER_ROLES: Role[] = ["owner", "admin"];
+// 可以查看所有訂單的角色
+const ORDER_VIEWER_ROLES: Role[] = ["staff", "chef", "owner", "admin"];
 
 const app = new Elysia();
 
@@ -150,7 +177,10 @@ app.get("/api/menu", () => ({ data: [...store.getMenu()] }), {
 
 app.post(
   "/api/menu",
-  async ({ body, set }) => {
+  async ({ request, body, set }) => {
+    const user = await requireUser(request);
+    requireAnyRole(user, MENU_MANAGER_ROLES);
+
     const newMenuItem = await store.createMenuItem(body);
     set.status = 201;
     return { data: newMenuItem };
@@ -159,18 +189,23 @@ app.post(
     body: createMenuItemBodySchema,
     detail: {
       tags: ["menu"],
-      summary: "Create a menu item",
+      summary: "Create a menu item (owner/admin only)",
       description: "Add a new menu item into the breakfast menu.",
     },
     response: {
       201: menuItemResponseSchema,
+      401: apiErrorResponseSchema,
+      403: apiErrorResponseSchema,
     },
   },
 );
 
 app.patch(
   "/api/menu/:id",
-  async ({ params, body, set }) => {
+  async ({ request, params, body, set }) => {
+    const user = await requireUser(request);
+    requireAnyRole(user, MENU_MANAGER_ROLES);
+
     const menuId = parseInt(params.id);
     const menuItem = await store.updateMenuItem(menuId, body);
 
@@ -186,11 +221,13 @@ app.patch(
     body: updateMenuItemBodySchema,
     detail: {
       tags: ["menu"],
-      summary: "Update a menu item",
+      summary: "Update a menu item (owner/admin only)",
       description: "Update fields of an existing menu item.",
     },
     response: {
       200: menuItemResponseSchema,
+      401: apiErrorResponseSchema,
+      403: apiErrorResponseSchema,
       404: apiErrorResponseSchema,
     },
   },
@@ -198,7 +235,10 @@ app.patch(
 
 app.delete(
   "/api/menu/:id",
-  async ({ params, set }) => {
+  async ({ request, params, set }) => {
+    const user = await requireUser(request);
+    requireAnyRole(user, MENU_MANAGER_ROLES);
+
     const menuId = parseInt(params.id);
     const removedMenuItem = await store.deleteMenuItem(menuId);
 
@@ -213,11 +253,13 @@ app.delete(
     params: deleteMenuItemParamsSchema,
     detail: {
       tags: ["menu"],
-      summary: "Delete a menu item",
+      summary: "Delete a menu item (owner/admin only)",
       description: "Remove a menu item by id.",
     },
     response: {
       200: menuItemResponseSchema,
+      401: apiErrorResponseSchema,
+      403: apiErrorResponseSchema,
       404: apiErrorResponseSchema,
     },
   },
@@ -226,17 +268,21 @@ app.delete(
 // 訂單列表路由
 app.get(
   "/api/orders",
-  () => ({
-    data: store.getOrders().map(toOrderResponse),
-  }),
+  async ({ request }) => {
+    const user = await requireUser(request);
+    requireAnyRole(user, ORDER_VIEWER_ROLES);
+    return { data: store.getOrders().map(toOrderResponse) };
+  },
   {
     detail: {
       tags: ["orders"],
-      summary: "List all orders",
-      description: "Return all orders stored in the demo backend.",
+      summary: "List all orders (staff/chef/owner/admin only)",
+      description: "Return all orders. Requires elevated role.",
     },
     response: {
       200: orderListResponseSchema,
+      401: apiErrorResponseSchema,
+      403: apiErrorResponseSchema,
     },
   },
 );
@@ -327,7 +373,9 @@ app.get(
       return { error: "Order not found" };
     }
 
-    if (order.userId !== user.id) {
+    // 提升角色可查看任何訂單，顧客只能查看自己的
+    const isElevated = user.roles.some((r) => ELEVATED_ROLES.includes(r));
+    if (!isElevated && order.userId !== user.id) {
       set.status = 403;
       return { error: "Forbidden" };
     }
@@ -340,7 +388,7 @@ app.get(
       tags: ["orders"],
       summary: "Get order by id",
       description:
-        "Return a single order when it belongs to the requested user.",
+        "Return a single order. Customers can only access their own orders; staff/owner/admin can access any.",
     },
     response: {
       200: orderResponseEnvelopeSchema,
@@ -357,8 +405,23 @@ app.patch(
   async ({ params, body, request, set }) => {
     const user = await requireUser(request);
     const orderId = parseInt(params.id);
+
+    // 提升角色（staff/owner/admin）可代管任何訂單。
+    // store 的 ownership 檢查需要傳入 userId，
+    // 所以先查詢訂單取得真實者，用主人的 userId 跳過 ownership 檢查。
+    const isElevated = user.roles.some((r) => ELEVATED_ROLES.includes(r));
+    let effectiveUserId = user.id;
+    if (isElevated) {
+      const order = store.getOrderById(orderId);
+      if (!order) {
+        set.status = 404;
+        return { error: "Order not found" };
+      }
+      effectiveUserId = order.userId;
+    }
+
     const result = await store.updateOrderItem(orderId, {
-      userId: user.id,
+      userId: effectiveUserId,
       itemId: body.itemId,
       qty: body.qty,
     });
@@ -415,7 +478,22 @@ app.post(
   async ({ params, request, set }) => {
     const user = await requireUser(request);
     const orderId = parseInt(params.id, 10);
-    const result = await store.submitOrder(orderId, { userId: user.id });
+
+    // 提升角色可代管店員替顧客提交訂單
+    const isElevated = user.roles.some((r) => ELEVATED_ROLES.includes(r));
+    let effectiveUserId = user.id;
+    if (isElevated) {
+      const order = store.getOrderById(orderId);
+      if (!order) {
+        set.status = 404;
+        return { error: "Order not found" };
+      }
+      effectiveUserId = order.userId;
+    }
+
+    const result = await store.submitOrder(orderId, {
+      userId: effectiveUserId,
+    });
 
     if (!result.ok && result.code === "ORDER_NOT_FOUND") {
       set.status = 404;

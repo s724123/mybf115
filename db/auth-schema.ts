@@ -1,4 +1,10 @@
-import { boolean, pgSchema, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  pgSchema,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 // ─── Auth Schema 設計原則 ─────────────────────────────────────────────────────
 // 1. 這是 Better Auth 的 DB 層定義，屬於「資料落地」層，不是 API contract。
@@ -9,7 +15,7 @@ import { boolean, pgSchema, text, timestamp } from "drizzle-orm/pg-core";
 //    ⚠️ 注意：不能使用 "public" 作為 schema 名稱（Drizzle 限制）
 //
 // 對照 shared/contracts.ts：
-//   SessionUser { id, email, name }  ← 只取這三欄對外暴露（auth/better-auth.ts 負責轉換）
+//   SessionUser { id, email, name, roles }  ← 只取這四欄對外暴露（auth/better-auth.ts 負責轉換）
 //   password、emailVerified、image 等欄位屬於 DB 層，不進入 API contract。
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -80,3 +86,26 @@ export const verification = appSchema.table("verification", {
   createdAt: timestamp("created_at"),
   updatedAt: timestamp("updated_at"),
 });
+
+// ─── user_role ────────────────────────────────────────────────────────────────
+// 儲存使用者角色。角色定義在 shared/contracts.ts（roleSchema），這裡只做落地。
+// 新用戶預設分配 "customer" 角色（由 auth/better-auth.ts databaseHooks 自動處理）。
+// 同一用戶可擁有多個角色（例如 staff 同時也是顧客）。
+export const userRole = appSchema.table(
+  "user_role",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // 對應 roleSchema 的枚舉字串值
+    createdAt: timestamp("created_at").notNull(),
+  },
+  (table) => ({
+    // 同一用戶不能重複指派相同角色
+    userRoleUniqueIdx: uniqueIndex("user_role_user_id_role_idx").on(
+      table.userId,
+      table.role,
+    ),
+  }),
+);

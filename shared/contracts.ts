@@ -4,6 +4,17 @@ import { z } from "zod";
 // 這裡是前後端共用的業務型別定義。
 // 型別（TypeScript type）由 Zod schema 自動推導，不需要手動維護兩份。
 
+// ─── Role schemas（第1事實：角色是使用者的客觀屬性）────────────────────────
+// 角色定義反映早餐店的組織結構，屬於業務領域的客觀事實。
+// 就像「菜單項目有價格」一樣，「使用者有角色」是不依賴技術實作的事實。
+export const roleSchema = z.enum([
+  "customer", // 顧客：查看菜單、下單、查看自己的訂單
+  "staff", // 店員：協助顧客操作、查看所有訂單
+  "chef", // 廚師：查看待處理訂單
+  "owner", // 店長/老闆：管理菜單、查看所有訂單
+  "admin", // 系統管理員：完整控制權
+]);
+
 export const menuItemSchema = z.object({
   id: z.number().int().min(1),
   name: z.string().min(1),
@@ -29,11 +40,17 @@ export const userSchema = z.object({
   address: z.string().min(1).optional(),
 });
 
-export const sessionUserSchema = userSchema.pick({
-  id: true,
-  email: true,
-  name: true,
-});
+export const sessionUserSchema = userSchema
+  .pick({
+    id: true,
+    email: true,
+    name: true,
+  })
+  .extend({
+    // 角色屬於 sessionUserSchema 而非 userSchema：
+    // 使用者「有角色」是業務事實，API contract 必須包含此資訊。
+    roles: z.array(roleSchema).default([]),
+  });
 
 export const orderItemSchema = z.object({
   item: menuItemSchema,
@@ -53,6 +70,7 @@ export const orderSchema = z.object({
 // ─── Derived TypeScript Types（自動推導，永不過時）───────────────────────────
 export type MenuItem = z.infer<typeof menuItemSchema>;
 export type User = z.infer<typeof userSchema>;
+export type Role = z.infer<typeof roleSchema>;
 export type SessionUser = z.infer<typeof sessionUserSchema>;
 export type OrderItem = z.infer<typeof orderItemSchema>;
 export type Order = z.infer<typeof orderSchema>;

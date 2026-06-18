@@ -1,8 +1,11 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { eq } from "drizzle-orm";
 import { db } from "../db/client.ts";
 import * as schema from "../db/auth-schema.ts";
-import type { SessionUser } from "../shared/contracts.ts";
+import { userRole } from "../db/auth-schema.ts";
+import type { Role, SessionUser } from "../shared/contracts.ts";
+import { roleSchema } from "../shared/contracts.ts";
 import { toSessionUser } from "./user-mapper.ts";
 
 // ─── Startup guard ────────────────────────────────────────────────────────────
@@ -56,18 +59,48 @@ export const auth = betterAuth({
         },
       }
     : {}),
+  // ─── Database Hooks ─────────────────────────────────────────────────────────
+  // 新用戶首次登入時自動分配「顧客」角色（第2事實：業務規則）。
+  // 使用 databaseHooks 而非 middleware 是因為這是資料初始化邏輯，
+  // 屬於「用戶創建」的後置處理，不是請求攔截。
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (newUser) => {
+          await db.insert(userRole).values({
+            id: crypto.randomUUID(),
+            userId: newUser.id,
+            role: "customer" satisfies Role,
+            createdAt: new Date(),
+          });
+        },
+      },
+    },
+  },
 });
 
 // ─── Session helper ───────────────────────────────────────────────────────────
 // 從 Request headers 取出 session，轉換成 contracts.ts 定義的 SessionUser。
 // DB 層的 Better Auth user 欄位（emailVerified / image / createdAt 等）
-// 不對外暴露，只取 contracts.ts 中定義的三個欄位。
+// 不對外暴露，只取 contracts.ts 中定義的欄位。
 export async function getCurrentUser(
   request: Request,
 ): Promise<SessionUser | null> {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session?.user) return null;
 
-  // DbUser → SessionUser 轉換（延續 contracts.ts 分層原則）
-  return toSessionUser(session.user);
+  // 從 DB 查詢該用戶的角色清單
+  const roleRows = await db
+    .select({ role: userRole.role })
+    .from(userRole)
+    .where(eq(userRole.userId, session.user.id));
+
+  // 只保留合法的角色值（過濾 DB 中可能的髒資料）
+  const roles = roleRows
+    .map((r) => roleSchema.safeParse(r.role))
+    .filter((r) => r.success)
+    .map((r) => r.data as Role);
+
+  // DbUser + roles → SessionUser 轉換（延續 contracts.ts 分層原則）
+  return toSessionUser(session.user, roles);
 }
