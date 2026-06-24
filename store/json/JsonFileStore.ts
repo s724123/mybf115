@@ -392,6 +392,17 @@ export class JsonFileStore implements Store {
       return { ok: false, code: "EMPTY_ORDER" };
     }
 
+    // 訂單送出前，重新快照所有項目的最新菜單資訊
+    for (const oi of order.items) {
+      const currentMenuItem = this.menu.find((m) => m.id === oi.item.id);
+      if (currentMenuItem) {
+        oi.item = { ...currentMenuItem };
+      }
+    }
+
+    // 重新計算總額（菜單價格可能已更新）
+    order.total = calculateOrderTotal(order.items);
+
     order.status = "submitted";
     order.submittedAt = new Date().toISOString();
     await this.persist();

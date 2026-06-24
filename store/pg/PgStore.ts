@@ -249,9 +249,17 @@ export class PgStore implements Store {
           );
         order.items.splice(existingIdx, 1);
       } else {
+        // 更新數量時，同時刷新菜單資訊快照（確保反映當前菜單狀態）
         await db
           .update(orderItemsTable)
-          .set({ qty: input.qty })
+          .set({
+            qty: input.qty,
+            name: menuItem.name,
+            price: menuItem.price,
+            category: menuItem.category,
+            description: menuItem.description,
+            imageUrl: menuItem.image_url,
+          })
           .where(
             and(
               eq(orderItemsTable.orderId, orderId),
@@ -259,7 +267,10 @@ export class PgStore implements Store {
             ),
           );
         const target = order.items[existingIdx];
-        if (target) target.qty = input.qty;
+        if (target) {
+          target.qty = input.qty;
+          target.item = { ...menuItem };
+        }
       }
     } else if (input.qty > 0) {
       await db.insert(orderItemsTable).values({
@@ -306,15 +317,46 @@ export class PgStore implements Store {
       return { ok: false, code: "ORDER_NOT_EDITABLE" };
     if (order.items.length === 0) return { ok: false, code: "EMPTY_ORDER" };
 
-    const submittedAt = new Date().toISOString();
+    const submittedAt = new Date();
+
+    // 訂單送出前，重新快照所有項目的最新菜單資訊
+    for (const oi of order.items) {
+      const currentMenuItem = this.menu.find((m) => m.id === oi.item.id);
+      if (currentMenuItem) {
+        await db
+          .update(orderItemsTable)
+          .set({
+            name: currentMenuItem.name,
+            price: currentMenuItem.price,
+            category: currentMenuItem.category,
+            description: currentMenuItem.description,
+            imageUrl: currentMenuItem.image_url,
+          })
+          .where(
+            and(
+              eq(orderItemsTable.orderId, orderId),
+              eq(orderItemsTable.itemId, oi.item.id),
+            ),
+          );
+        // 同步記憶體中的 order item 快照
+        oi.item = { ...currentMenuItem };
+      }
+    }
+
+    // 重新計算總額（菜單價格可能已更新）
+    order.total = calculateTotal(order.items);
 
     await db
       .update(ordersTable)
-      .set({ status: "submitted", submittedAt: new Date(submittedAt) })
+      .set({
+        status: "submitted",
+        total: order.total,
+        submittedAt,
+      })
       .where(eq(ordersTable.id, orderId));
 
     order.status = "submitted";
-    order.submittedAt = submittedAt;
+    order.submittedAt = submittedAt.toISOString();
 
     return { ok: true, order };
   }
