@@ -1,722 +1,1056 @@
 {
-  "configuration" : { },
-  "description" : "Breakfast Shop Ordering System — V9 (Better Auth + Drizzle + Neon)",
-  "documentation" : { },
-  "id" : 1,
-  "lastModifiedDate" : "2026-06-16T12:36:37Z",
-  "model" : {
-    "people" : [ {
-      "description" : "透過網頁瀏覽菜單、加入購物車、以 Google 帳號登入、建立並送出訂單的一般使用者。",
-      "id" : "1",
-      "name" : "顧客",
-      "properties" : {
-        "structurizr.dsl.identifier" : "customer"
-      },
-      "relationships" : [ {
-        "description" : "瀏覽菜單、以 Google 帳號登入、建立並送出訂單",
-        "destinationId" : "5",
-        "id" : "23",
-        "sourceId" : "1",
-        "tags" : "Relationship",
-        "technology" : "HTTPS / Browser"
-      }, {
-        "description" : "瀏覽菜單、以 Google 帳號登入、建立並送出訂單",
-        "destinationId" : "4",
-        "id" : "24",
-        "linkedRelationshipId" : "23",
-        "sourceId" : "1",
-        "technology" : "HTTPS / Browser"
-      } ],
-      "tags" : "Element,Person"
-    } ],
-    "softwareSystems" : [ {
-      "description" : "提供 OAuth 2.0 / Google Sign-In 服務，由 Better Auth 呼叫完成社交登入流程。",
-      "documentation" : { },
-      "id" : "2",
-      "name" : "Google Identity Platform",
-      "properties" : {
-        "structurizr.dsl.identifier" : "googleOAuth"
-      },
-      "tags" : "Element,Software System,External"
-    }, {
-      "description" : "Serverless PostgreSQL 雲端資料庫服務，儲存 Better Auth 身份資料（bf_v9.user/session/account）與業務資料（bf_v9.menu_items/orders/order_items）。",
-      "documentation" : { },
-      "id" : "3",
-      "name" : "Neon (PostgreSQL Cloud)",
-      "properties" : {
-        "structurizr.dsl.identifier" : "neonCloud"
-      },
-      "tags" : "Element,Software System,External,Database"
-    }, {
-      "containers" : [ {
-        "description" : "在瀏覽器中執行的 React 應用。V9 使用 GET /api/auth/get-session 恢復 session（cookie-based，不再用 localStorage）；所有 API 請求帶 credentials:include；支援 Google Sign-In 流程。",
-        "documentation" : { },
-        "id" : "5",
-        "name" : "SPA 前端",
-        "properties" : {
-          "structurizr.dsl.identifier" : "spa"
+  "configuration": {},
+  "description": "Breakfast Shop Ordering System — V9 (Better Auth + Drizzle + Neon)",
+  "documentation": {},
+  "id": 1,
+  "lastModifiedDate": "2026-06-24T09:09:49Z",
+  "model": {
+    "people": [
+      {
+        "description": "透過網頁瀏覽菜單、加入購物車、以 Google 帳號登入、建立並送出訂單的一般使用者。",
+        "id": "1",
+        "name": "顧客",
+        "properties": {
+          "structurizr.dsl.identifier": "customer"
         },
-        "relationships" : [ {
-          "description" : "呼叫 REST API（含 credentials:include）",
-          "destinationId" : "6",
-          "id" : "25",
-          "sourceId" : "5",
-          "tags" : "Relationship",
-          "technology" : "HTTP/JSON"
-        }, {
-          "description" : "import type MenuItem, Order, SessionUser（compile-time）",
-          "destinationId" : "18",
-          "id" : "53",
-          "sourceId" : "5",
-          "tags" : "Relationship",
-          "technology" : "TypeScript"
-        } ],
-        "tags" : "Element,Container,Browser",
-        "technology" : "React 19, TypeScript, Vite 5, TailwindCSS, DaisyUI"
-      }, {
-        "components" : [ {
-          "description" : "V9 正式入口。掛載 cors 外掛、openapi 外掛；透過 auth.handler 代理所有 /api/auth/* 請求至 Better Auth；以 requireUser() 保護 order 相關路由；schemas 全部 import 自 shared/route-schemas.ts。",
-          "documentation" : { },
-          "id" : "7",
-          "name" : "路由層 (backend.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "routeLayer"
+        "relationships": [
+          {
+            "description": "瀏覽菜單、以 Google 帳號登入、建立並送出訂單",
+            "destinationId": "5",
+            "id": "23",
+            "sourceId": "1",
+            "tags": "Relationship",
+            "technology": "HTTPS / Browser"
           },
-          "relationships" : [ {
-            "description" : "auth.handler 代理 /api/auth/* 請求；requireUser() 取得 session",
-            "destinationId" : "8",
-            "id" : "30",
-            "sourceId" : "7",
-            "tags" : "Relationship"
-          }, {
-            "description" : "createStore({ dataFilePath }) 取得 store 實例",
-            "destinationId" : "10",
-            "id" : "31",
-            "sourceId" : "7",
-            "tags" : "Relationship"
-          }, {
-            "description" : "import 所有 Zod request/response schemas 與 toOrderResponse()",
-            "destinationId" : "17",
-            "id" : "32",
-            "sourceId" : "7",
-            "tags" : "Relationship"
-          }, {
-            "description" : "app.use(openapi(...)) 掛載外掛",
-            "destinationId" : "19",
-            "id" : "33",
-            "sourceId" : "7",
-            "tags" : "Relationship"
-          }, {
-            "description" : "import toTaipeiDateTime（舊 v7 路由仍直接使用）",
-            "destinationId" : "20",
-            "id" : "34",
-            "sourceId" : "7",
-            "tags" : "Relationship"
-          } ],
-          "tags" : "Element,Component",
-          "technology" : "Elysia routes"
-        }, {
-          "description" : "建立 Better Auth 實例：drizzleAdapter 連接 Neon PostgreSQL、僅啟用 Google OAuth（禁用 email/password）。啟動時驗證 BETTER_AUTH_SECRET 存在且非預設值。提供 getCurrentUser() helper 將 session 轉換成 SessionUser。",
-          "documentation" : { },
-          "id" : "8",
-          "name" : "Better Auth 模組 (auth/better-auth.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "betterAuthModule"
-          },
-          "relationships" : [ {
-            "description" : "drizzleAdapter(db) 連接資料庫",
-            "destinationId" : "14",
-            "id" : "35",
-            "sourceId" : "8",
-            "tags" : "Relationship"
-          }, {
-            "description" : "讀寫 user/session/account/verification 資料表",
-            "destinationId" : "16",
-            "id" : "36",
-            "sourceId" : "8",
-            "tags" : "Relationship"
-          }, {
-            "description" : "toSessionUser() 轉換 DB user → SessionUser",
-            "destinationId" : "9",
-            "id" : "37",
-            "sourceId" : "8",
-            "tags" : "Relationship"
-          }, {
-            "description" : "OAuth 2.0 authorize & callback",
-            "destinationId" : "2",
-            "id" : "38",
-            "sourceId" : "8",
-            "tags" : "Relationship",
-            "technology" : "HTTPS"
-          } ],
-          "tags" : "Element,Component",
-          "technology" : "better-auth, drizzle-adapter"
-        }, {
-          "description" : "toSessionUser()：將 Better Auth DB user（含 emailVerified / image 等欄位）投影為 contracts.ts 定義的 SessionUser（id, email, name），不對外暴露敏感欄位。",
-          "documentation" : { },
-          "id" : "9",
-          "name" : "User Mapper (auth/user-mapper.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "userMapper"
-          },
-          "tags" : "Element,Component",
-          "technology" : "TypeScript"
-        }, {
-          "description" : "工廠函式 createStore()。讀取 STORE_DRIVER 環境變數：'postgres' → PgStore（Neon）；其他 → JsonFileStore（data/store.json）。回傳型別固定為 Store 介面，路由層不感知具體實作。",
-          "documentation" : { },
-          "id" : "10",
-          "name" : "Store 工廠 (store/index.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "storeFactory"
-          },
-          "relationships" : [ {
-            "description" : "STORE_DRIVER=postgres 時建立 PgStore 實例",
-            "destinationId" : "12",
-            "id" : "39",
-            "sourceId" : "10",
-            "tags" : "Relationship"
-          }, {
-            "description" : "其他情況建立 JsonFileStore 實例",
-            "destinationId" : "13",
-            "id" : "40",
-            "sourceId" : "10",
-            "tags" : "Relationship"
-          } ],
-          "tags" : "Element,Component",
-          "technology" : "TypeScript factory function"
-        }, {
-          "description" : "V9 精簡版資料存取契約：auth 相關方法已移除（由 Better Auth 負責），userId 全面改為 string（對應 Better Auth string ID）。保留 menu CRUD、order CRUD 與 submitOrder。",
-          "documentation" : { },
-          "id" : "11",
-          "name" : "Store 介面 (store/Store.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "storeInterface"
-          },
-          "tags" : "Element,Component",
-          "technology" : "TypeScript interface"
-        }, {
-          "description" : "Store 介面的 PostgreSQL 實作，使用 Drizzle ORM + Neon serverless pool。init() 檢查 DB 連線、從 data/store.json 種入初始菜單（若 DB 為空）、從 DB 重新載入資料至記憶體快取。",
-          "documentation" : { },
-          "id" : "12",
-          "name" : "PgStore (store/pg/PgStore.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "pgStore"
-          },
-          "relationships" : [ {
-            "description" : "implements Store 介面",
-            "destinationId" : "11",
-            "id" : "41",
-            "sourceId" : "12",
-            "tags" : "Relationship"
-          }, {
-            "description" : "透過 Drizzle ORM 執行 SQL",
-            "destinationId" : "14",
-            "id" : "43",
-            "sourceId" : "12",
-            "tags" : "Relationship"
-          } ],
-          "tags" : "Element,Component",
-          "technology" : "TypeScript class, Drizzle ORM"
-        }, {
-          "description" : "Store 介面的 JSON 檔案備用實作。含 init()、normalizeMenuItem/normalizeUser/normalizeUserId 相容舊資料、tmp+rename 原子寫入、Promise chain persist queue。預設使用者：demo@example.com / amy@example.com（password: 1234）。",
-          "documentation" : { },
-          "id" : "13",
-          "name" : "JsonFileStore (store/json/JsonFileStore.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "jsonFileStore"
-          },
-          "relationships" : [ {
-            "description" : "implements Store 介面",
-            "destinationId" : "11",
-            "id" : "42",
-            "sourceId" : "13",
-            "tags" : "Relationship"
-          }, {
-            "description" : "讀寫 data/store.json（tmp+rename 原子寫入）",
-            "destinationId" : "22",
-            "id" : "46",
-            "sourceId" : "13",
-            "tags" : "Relationship",
-            "technology" : "Bun file API"
-          } ],
-          "tags" : "Element,Component",
-          "technology" : "TypeScript class, Bun file API"
-        }, {
-          "description" : "以 @neondatabase/serverless Pool 建立 WebSocket 連線，透過 drizzle() 建立 ORM 實例，同時 spread business schema 與 auth schema。啟動時若無 DATABASE_URL 即拋錯。",
-          "documentation" : { },
-          "id" : "14",
-          "name" : "DB Client (db/client.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "dbClient"
-          },
-          "relationships" : [ {
-            "description" : "menu_items / orders / order_items 資料表操作",
-            "destinationId" : "15",
-            "id" : "44",
-            "sourceId" : "14",
-            "tags" : "Relationship"
-          }, {
-            "description" : "WebSocket 連線至 Neon serverless pool",
-            "destinationId" : "3",
-            "id" : "45",
-            "sourceId" : "14",
-            "tags" : "Relationship",
-            "technology" : "WSS"
-          } ],
-          "tags" : "Element,Component",
-          "technology" : "@neondatabase/serverless, drizzle-orm/neon-serverless"
-        }, {
-          "description" : "Drizzle 業務資料表定義，置於 PG_SCHEMA（預設 bf_v9）namespace：menu_items（自增 PK）、orders（userId 外鍵對應 Better Auth user.id）、order_items（反正規化，含 name/price/category/description/image_url）。",
-          "documentation" : { },
-          "id" : "15",
-          "name" : "Business Schema (db/schema.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "bizSchema"
-          },
-          "relationships" : [ {
-            "description" : "ordersTable.userId → Better Auth user.id 外鍵",
-            "destinationId" : "16",
-            "id" : "54",
-            "sourceId" : "15",
-            "tags" : "Relationship"
-          } ],
-          "tags" : "Element,Component",
-          "technology" : "Drizzle ORM, drizzle-orm/pg-core"
-        }, {
-          "description" : "Better Auth 所需資料表：user / session / account / verification，由 betterAuth drizzleAdapter 自動維護，與業務 tables 同處 Neon PostgreSQL bf_v9 schema。",
-          "documentation" : { },
-          "id" : "16",
-          "name" : "Auth Schema (db/auth-schema.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "authSchema"
-          },
-          "tags" : "Element,Component",
-          "technology" : "better-auth, Drizzle ORM"
-        }, {
-          "description" : "Zod-based API 層 schema 集中定義：request body/params schema（createMenuItemBodySchema 等）、response envelope schema（menuListResponseSchema 等）、OrderResponse 型別與 toOrderResponse() 轉換函式。",
-          "documentation" : { },
-          "id" : "17",
-          "name" : "Route Schemas (shared/route-schemas.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "routeSchemas"
-          },
-          "relationships" : [ {
-            "description" : "import menuItemSchema, orderSchema（複用業務 schema）",
-            "destinationId" : "18",
-            "id" : "48",
-            "sourceId" : "17",
-            "tags" : "Relationship"
-          }, {
-            "description" : "import toTaipeiDateTime 供 toOrderResponse() 使用",
-            "destinationId" : "20",
-            "id" : "49",
-            "sourceId" : "17",
-            "tags" : "Relationship"
-          } ],
-          "tags" : "Element,Component",
-          "technology" : "Zod, TypeScript"
-        }, {
-          "description" : "V9 升級為 Zod schema 驅動：menuItemSchema、userSchema（id: string，對應 Better Auth）、sessionUserSchema（SessionUser = { id, email, name }）、orderSchema（userId: string）。TypeScript 型別全部由 z.infer<> 自動推導，消除手動維護兩份型別的問題。",
-          "documentation" : { },
-          "id" : "18",
-          "name" : "共用型別契約 (shared/contracts.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "sharedContracts"
-          },
-          "tags" : "Element,Component",
-          "technology" : "Zod, TypeScript"
-        }, {
-          "description" : "透過 @elysiajs/openapi 輸出 Swagger UI（GET /openapi）與 JSON spec（GET /openapi/json）。排除靜態資產路由與 openapi 本身路由。",
-          "documentation" : { },
-          "id" : "19",
-          "name" : "OpenAPI 外掛",
-          "properties" : {
-            "structurizr.dsl.identifier" : "openApiPlugin"
-          },
-          "tags" : "Element,Component",
-          "technology" : "@elysiajs/openapi"
-        }, {
-          "description" : "toTaipeiDateTime()：使用 Intl.DateTimeFormat sv-SE / Asia/Taipei 將 UTC ISO string 轉換為台北時間字串（YYYY-MM-DD HH:MM:SS 格式），供 toOrderResponse() 使用。",
-          "documentation" : { },
-          "id" : "20",
-          "name" : "時區工具 (util.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "utilModule"
-          },
-          "tags" : "Element,Component",
-          "technology" : "TypeScript, Intl.DateTimeFormat"
-        }, {
-          "description" : "drizzle-kit 設定檔。schema 指向 db/schema.ts 與 db/auth-schema.ts；out 輸出至 drizzle/ 目錄（含 SQL 遷移檔與 meta/ 快照）。使用 DATABASE_URL_MIGRATION 或 DATABASE_URL 作為遷移連線字串。",
-          "documentation" : { },
-          "id" : "21",
-          "name" : "Drizzle 遷移設定 (drizzle.config.ts)",
-          "properties" : {
-            "structurizr.dsl.identifier" : "drizzleConfig"
-          },
-          "relationships" : [ {
-            "description" : "讀取 db/schema.ts 產生遷移 SQL",
-            "destinationId" : "15",
-            "id" : "50",
-            "sourceId" : "21",
-            "tags" : "Relationship"
-          }, {
-            "description" : "讀取 db/auth-schema.ts 產生遷移 SQL",
-            "destinationId" : "16",
-            "id" : "51",
-            "sourceId" : "21",
-            "tags" : "Relationship"
-          }, {
-            "description" : "執行 drizzle-kit push/migrate 時連線至 Neon",
-            "destinationId" : "3",
-            "id" : "52",
-            "sourceId" : "21",
-            "tags" : "Relationship",
-            "technology" : "HTTPS"
-          } ],
-          "tags" : "Element,Component",
-          "technology" : "drizzle-kit, PostgreSQL"
-        } ],
-        "description" : "Bun + Elysia V9 正式入口（backend.ts）。使用 Better Auth 管理 session 與 Google OAuth；@elysia/cors 取代手動 CORS；所有 schema 集中於 shared/route-schemas.ts。根據 STORE_DRIVER 環境變數選擇 PgStore 或 JsonFileStore。",
-        "documentation" : { },
-        "id" : "6",
-        "name" : "後端 API 伺服器",
-        "properties" : {
-          "structurizr.dsl.identifier" : "apiServer"
-        },
-        "relationships" : [ {
-          "description" : "OAuth 2.0 登入流程（authorize / callback）",
-          "destinationId" : "2",
-          "id" : "26",
-          "sourceId" : "6",
-          "tags" : "Relationship",
-          "technology" : "HTTPS, Better Auth"
-        }, {
-          "description" : "讀寫 Better Auth session 與業務資料",
-          "destinationId" : "3",
-          "id" : "28",
-          "sourceId" : "6",
-          "tags" : "Relationship",
-          "technology" : "TCP/WSS, Drizzle + @neondatabase/serverless"
-        }, {
-          "description" : "讀寫 data/store.json（tmp+rename 原子寫入）",
-          "destinationId" : "22",
-          "id" : "47",
-          "linkedRelationshipId" : "46",
-          "sourceId" : "6",
-          "technology" : "Bun file API"
-        } ],
-        "tags" : "Element,Container",
-        "technology" : "Bun runtime, Elysia framework, TypeScript, Better Auth"
-      }, {
-        "description" : "data/store.json。當 STORE_DRIVER != postgres 時由 JsonFileStore 使用。儲存 users（string ID 零填補，如 '0001'）、menu（12 項含圖片與描述）、orders（userId: string）、三個自增計數器。",
-        "documentation" : { },
-        "id" : "22",
-        "name" : "JSON 檔案資料庫",
-        "properties" : {
-          "structurizr.dsl.identifier" : "fileStore"
-        },
-        "tags" : "Element,Container,Database",
-        "technology" : "data/store.json, Bun file API (local filesystem)"
-      } ],
-      "description" : "前後端分離的早餐店點餐平台。V9 使用 Better Auth + Google OAuth 管理身份，Drizzle ORM + Neon PostgreSQL 作為正式資料庫，同時保留 JSON file store 作為開發/教學備用。",
-      "documentation" : { },
-      "id" : "4",
-      "name" : "早餐店點餐系統",
-      "properties" : {
-        "structurizr.dsl.identifier" : "breakfastSystem"
+          {
+            "description": "瀏覽菜單、以 Google 帳號登入、建立並送出訂單",
+            "destinationId": "4",
+            "id": "24",
+            "linkedRelationshipId": "23",
+            "sourceId": "1",
+            "technology": "HTTPS / Browser"
+          }
+        ],
+        "tags": "Element,Person"
       },
-      "relationships" : [ {
-        "description" : "OAuth 2.0 登入流程（authorize / callback）",
-        "destinationId" : "2",
-        "id" : "27",
-        "linkedRelationshipId" : "26",
-        "sourceId" : "4",
-        "technology" : "HTTPS, Better Auth"
-      }, {
-        "description" : "讀寫 Better Auth session 與業務資料",
-        "destinationId" : "3",
-        "id" : "29",
-        "linkedRelationshipId" : "28",
-        "sourceId" : "4",
-        "technology" : "TCP/WSS, Drizzle + @neondatabase/serverless"
-      } ],
-      "tags" : "Element,Software System"
-    } ]
+      {
+        "description": "協助顧客點餐、查看所有訂單狀態的店員。",
+        "id": "56",
+        "name": "店員",
+        "properties": {
+          "structurizr.dsl.identifier": "staff"
+        },
+        "relationships": [
+          {
+            "description": "瀏覽菜單、協助顧客下單、查看所有訂單",
+            "destinationId": "5",
+            "id": "60",
+            "sourceId": "56",
+            "tags": "Relationship",
+            "technology": "HTTPS / Browser"
+          },
+          {
+            "description": "瀏覽菜單、協助顧客下單、查看所有訂單",
+            "destinationId": "4",
+            "id": "61",
+            "linkedRelationshipId": "60",
+            "sourceId": "56",
+            "technology": "HTTPS / Browser"
+          }
+        ],
+        "tags": "Element,Person"
+      },
+      {
+        "description": "查看待處理與歷史訂單的廚師。",
+        "id": "57",
+        "name": "廚師",
+        "properties": {
+          "structurizr.dsl.identifier": "chef"
+        },
+        "relationships": [
+          {
+            "description": "瀏覽菜單、查看待處理與歷史訂單",
+            "destinationId": "5",
+            "id": "62",
+            "sourceId": "57",
+            "tags": "Relationship",
+            "technology": "HTTPS / Browser"
+          },
+          {
+            "description": "瀏覽菜單、查看待處理與歷史訂單",
+            "destinationId": "4",
+            "id": "63",
+            "linkedRelationshipId": "62",
+            "sourceId": "57",
+            "technology": "HTTPS / Browser"
+          }
+        ],
+        "tags": "Element,Person"
+      },
+      {
+        "description": "管理菜單項目、查看所有訂單與營業狀況的店長。",
+        "id": "58",
+        "name": "店長",
+        "properties": {
+          "structurizr.dsl.identifier": "owner"
+        },
+        "relationships": [
+          {
+            "description": "瀏覽菜單、管理菜單項目、查看所有訂單",
+            "destinationId": "5",
+            "id": "64",
+            "sourceId": "58",
+            "tags": "Relationship",
+            "technology": "HTTPS / Browser"
+          },
+          {
+            "description": "瀏覽菜單、管理菜單項目、查看所有訂單",
+            "destinationId": "4",
+            "id": "65",
+            "linkedRelationshipId": "64",
+            "sourceId": "58",
+            "technology": "HTTPS / Browser"
+          }
+        ],
+        "tags": "Element,Person"
+      },
+      {
+        "description": "系統管理員，管理使用者權限與系統設定，擁有完整控制權。",
+        "id": "59",
+        "name": "管理員",
+        "properties": {
+          "structurizr.dsl.identifier": "admin"
+        },
+        "relationships": [
+          {
+            "description": "瀏覽菜單、管理菜單項目與使用者權限、查看所有訂單",
+            "destinationId": "5",
+            "id": "66",
+            "sourceId": "59",
+            "tags": "Relationship",
+            "technology": "HTTPS / Browser"
+          },
+          {
+            "description": "瀏覽菜單、管理菜單項目與使用者權限、查看所有訂單",
+            "destinationId": "4",
+            "id": "67",
+            "linkedRelationshipId": "66",
+            "sourceId": "59",
+            "technology": "HTTPS / Browser"
+          }
+        ],
+        "tags": "Element,Person"
+      }
+    ],
+    "softwareSystems": [
+      {
+        "description": "提供 OAuth 2.0 / Google Sign-In 服務，由 Better Auth 呼叫完成社交登入流程。",
+        "documentation": {},
+        "id": "2",
+        "name": "Google Identity Platform",
+        "properties": {
+          "structurizr.dsl.identifier": "googleOAuth"
+        },
+        "tags": "Element,Software System,External"
+      },
+      {
+        "description": "Serverless PostgreSQL 雲端資料庫服務，儲存 Better Auth 身份資料（bf_v9.user/session/account）與業務資料（bf_v9.menu_items/orders/order_items）。",
+        "documentation": {},
+        "id": "3",
+        "name": "Neon (PostgreSQL Cloud)",
+        "properties": {
+          "structurizr.dsl.identifier": "neonCloud"
+        },
+        "tags": "Element,Software System,External,Database"
+      },
+      {
+        "containers": [
+          {
+            "description": "在瀏覽器中執行的 React 應用。V10 使用 GET /api/auth/me 恢復 session（含 roles 資訊，不再呼叫 Better Auth 原生 get-session）；新增管理員頁面（AdminPanel）供 admin 使用者檢視及管理所有使用者權限；導覽列依 user.roles 條件式顯示管理員按鈕；所有 API 請求帶 credentials:include；支援 Google Sign-In 流程。",
+            "documentation": {},
+            "id": "5",
+            "name": "SPA 前端",
+            "properties": {
+              "structurizr.dsl.identifier": "spa"
+            },
+            "relationships": [
+              {
+                "description": "呼叫 REST API（含 credentials:include）",
+                "destinationId": "6",
+                "id": "25",
+                "sourceId": "5",
+                "tags": "Relationship",
+                "technology": "HTTP/JSON"
+              },
+              {
+                "description": "import type MenuItem, Order, SessionUser（compile-time）",
+                "destinationId": "18",
+                "id": "53",
+                "sourceId": "5",
+                "tags": "Relationship",
+                "technology": "TypeScript"
+              }
+            ],
+            "tags": "Element,Container,Browser",
+            "technology": "React 19, TypeScript, Vite 5, TailwindCSS, DaisyUI"
+          },
+          {
+            "components": [
+              {
+                "description": "V10 正式入口。掛載 cors 外掛、openapi 外掛；透過 auth.handler 代理大部分 /api/auth/* 請求至 Better Auth；新增自訂 GET /api/auth/me（使用 getCurrentUser 回傳含 roles 的 session）；新增 /api/admin/* 路由群組（listUsers、addRole、deleteRole），限 admin 角色存取並直接操作 authSchema（user、userRole 表）；以 requireUser() 保護 order 相關路由；schemas 全部 import 自 shared/route-schemas.ts。",
+                "documentation": {},
+                "id": "7",
+                "name": "路由層 (backend.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "routeLayer"
+                },
+                "relationships": [
+                  {
+                    "description": "auth.handler 代理 /api/auth/* 請求；requireUser() 取得 session",
+                    "destinationId": "8",
+                    "id": "30",
+                    "sourceId": "7",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "createStore({ dataFilePath }) 取得 store 實例",
+                    "destinationId": "10",
+                    "id": "31",
+                    "sourceId": "7",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "import 所有 Zod request/response schemas 與 toOrderResponse()",
+                    "destinationId": "17",
+                    "id": "32",
+                    "sourceId": "7",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "app.use(openapi(...)) 掛載外掛",
+                    "destinationId": "19",
+                    "id": "33",
+                    "sourceId": "7",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "import toTaipeiDateTime（舊 v7 路由仍直接使用）",
+                    "destinationId": "20",
+                    "id": "34",
+                    "sourceId": "7",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "管理員路由（/api/admin/*）直接讀寫 user、userRole 表",
+                    "destinationId": "16",
+                    "id": "55",
+                    "sourceId": "7",
+                    "tags": "Relationship"
+                  }
+                ],
+                "tags": "Element,Component",
+                "technology": "Elysia routes"
+              },
+              {
+                "description": "建立 Better Auth 實例：drizzleAdapter 連接 Neon PostgreSQL、僅啟用 Google OAuth（禁用 email/password）。啟動時驗證 BETTER_AUTH_SECRET 存在且非預設值。提供 getCurrentUser() helper 將 session 轉換成 SessionUser。",
+                "documentation": {},
+                "id": "8",
+                "name": "Better Auth 模組 (auth/better-auth.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "betterAuthModule"
+                },
+                "relationships": [
+                  {
+                    "description": "drizzleAdapter(db) 連接資料庫",
+                    "destinationId": "14",
+                    "id": "35",
+                    "sourceId": "8",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "讀寫 user/session/account/verification 資料表",
+                    "destinationId": "16",
+                    "id": "36",
+                    "sourceId": "8",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "toSessionUser() 轉換 DB user → SessionUser",
+                    "destinationId": "9",
+                    "id": "37",
+                    "sourceId": "8",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "OAuth 2.0 authorize & callback",
+                    "destinationId": "2",
+                    "id": "38",
+                    "sourceId": "8",
+                    "tags": "Relationship",
+                    "technology": "HTTPS"
+                  }
+                ],
+                "tags": "Element,Component",
+                "technology": "better-auth, drizzle-adapter"
+              },
+              {
+                "description": "toSessionUser()：將 Better Auth DB user（含 emailVerified / image 等欄位）投影為 contracts.ts 定義的 SessionUser（id, email, name），不對外暴露敏感欄位。",
+                "documentation": {},
+                "id": "9",
+                "name": "User Mapper (auth/user-mapper.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "userMapper"
+                },
+                "tags": "Element,Component",
+                "technology": "TypeScript"
+              },
+              {
+                "description": "工廠函式 createStore()。讀取 STORE_DRIVER 環境變數：'postgres' → PgStore（Neon）；其他 → JsonFileStore（data/store.json）。回傳型別固定為 Store 介面，路由層不感知具體實作。",
+                "documentation": {},
+                "id": "10",
+                "name": "Store 工廠 (store/index.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "storeFactory"
+                },
+                "relationships": [
+                  {
+                    "description": "STORE_DRIVER=postgres 時建立 PgStore 實例",
+                    "destinationId": "12",
+                    "id": "39",
+                    "sourceId": "10",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "其他情況建立 JsonFileStore 實例",
+                    "destinationId": "13",
+                    "id": "40",
+                    "sourceId": "10",
+                    "tags": "Relationship"
+                  }
+                ],
+                "tags": "Element,Component",
+                "technology": "TypeScript factory function"
+              },
+              {
+                "description": "V9 精簡版資料存取契約：auth 相關方法已移除（由 Better Auth 負責），userId 全面改為 string（對應 Better Auth string ID）。保留 menu CRUD、order CRUD 與 submitOrder。",
+                "documentation": {},
+                "id": "11",
+                "name": "Store 介面 (store/Store.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "storeInterface"
+                },
+                "tags": "Element,Component",
+                "technology": "TypeScript interface"
+              },
+              {
+                "description": "Store 介面的 PostgreSQL 實作，使用 Drizzle ORM + Neon serverless pool。init() 檢查 DB 連線、從 data/store.json 種入初始菜單（若 DB 為空）、從 DB 重新載入資料至記憶體快取。submitOrder() 在訂單送出前重新快照每項餐點的最新菜單資訊（name/price/category/description/image_url）至 order_items 表，確保快照反映訂單成立時刻的資料（Snapshot Pattern）。updateOrderItem() 在更新數量時同步刷新快照。",
+                "documentation": {},
+                "id": "12",
+                "name": "PgStore (store/pg/PgStore.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "pgStore"
+                },
+                "relationships": [
+                  {
+                    "description": "implements Store 介面",
+                    "destinationId": "11",
+                    "id": "41",
+                    "sourceId": "12",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "透過 Drizzle ORM 執行 SQL",
+                    "destinationId": "14",
+                    "id": "43",
+                    "sourceId": "12",
+                    "tags": "Relationship"
+                  }
+                ],
+                "tags": "Element,Component",
+                "technology": "TypeScript class, Drizzle ORM"
+              },
+              {
+                "description": "Store 介面的 JSON 檔案備用實作。含 init()、normalizeMenuItem/normalizeUser/normalizeUserId 相容舊資料、tmp+rename 原子寫入、Promise chain persist queue。預設使用者：demo@example.com / amy@example.com（password: 1234）。",
+                "documentation": {},
+                "id": "13",
+                "name": "JsonFileStore (store/json/JsonFileStore.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "jsonFileStore"
+                },
+                "relationships": [
+                  {
+                    "description": "implements Store 介面",
+                    "destinationId": "11",
+                    "id": "42",
+                    "sourceId": "13",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "讀寫 data/store.json（tmp+rename 原子寫入）",
+                    "destinationId": "22",
+                    "id": "46",
+                    "sourceId": "13",
+                    "tags": "Relationship",
+                    "technology": "Bun file API"
+                  }
+                ],
+                "tags": "Element,Component",
+                "technology": "TypeScript class, Bun file API"
+              },
+              {
+                "description": "以 @neondatabase/serverless Pool 建立 WebSocket 連線，透過 drizzle() 建立 ORM 實例，同時 spread business schema 與 auth schema。啟動時若無 DATABASE_URL 即拋錯。",
+                "documentation": {},
+                "id": "14",
+                "name": "DB Client (db/client.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "dbClient"
+                },
+                "relationships": [
+                  {
+                    "description": "menu_items / orders / order_items 資料表操作",
+                    "destinationId": "15",
+                    "id": "44",
+                    "sourceId": "14",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "WebSocket 連線至 Neon serverless pool",
+                    "destinationId": "3",
+                    "id": "45",
+                    "sourceId": "14",
+                    "tags": "Relationship",
+                    "technology": "WSS"
+                  }
+                ],
+                "tags": "Element,Component",
+                "technology": "@neondatabase/serverless, drizzle-orm/neon-serverless"
+              },
+              {
+                "description": "Drizzle 業務資料表定義，置於 PG_SCHEMA（預設 bf_v9）namespace：menu_items（自增 PK）、orders（userId 外鍵對應 Better Auth user.id）、order_items（反正規化，含 name/price/category/description/image_url）。",
+                "documentation": {},
+                "id": "15",
+                "name": "Business Schema (db/schema.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "bizSchema"
+                },
+                "relationships": [
+                  {
+                    "description": "ordersTable.userId → Better Auth user.id 外鍵",
+                    "destinationId": "16",
+                    "id": "54",
+                    "sourceId": "15",
+                    "tags": "Relationship"
+                  }
+                ],
+                "tags": "Element,Component",
+                "technology": "Drizzle ORM, drizzle-orm/pg-core"
+              },
+              {
+                "description": "Better Auth 所需資料表：user / session / account / verification，由 betterAuth drizzleAdapter 自動維護，與業務 tables 同處 Neon PostgreSQL bf_v9 schema。",
+                "documentation": {},
+                "id": "16",
+                "name": "Auth Schema (db/auth-schema.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "authSchema"
+                },
+                "tags": "Element,Component",
+                "technology": "better-auth, Drizzle ORM"
+              },
+              {
+                "description": "Zod-based API 層 schema 集中定義：request body/params schema（createMenuItemBodySchema 等）、response envelope schema（menuListResponseSchema 等）、admin 相關 schema（adminUserSchema、adminUsersResponseSchema、addRoleBodySchema、deleteRoleParamsSchema、adminSuccessResponseSchema）、OrderResponse 型別與 toOrderResponse() 轉換函式。",
+                "documentation": {},
+                "id": "17",
+                "name": "Route Schemas (shared/route-schemas.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "routeSchemas"
+                },
+                "relationships": [
+                  {
+                    "description": "import menuItemSchema, orderSchema（複用業務 schema）",
+                    "destinationId": "18",
+                    "id": "48",
+                    "sourceId": "17",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "import toTaipeiDateTime 供 toOrderResponse() 使用",
+                    "destinationId": "20",
+                    "id": "49",
+                    "sourceId": "17",
+                    "tags": "Relationship"
+                  }
+                ],
+                "tags": "Element,Component",
+                "technology": "Zod, TypeScript"
+              },
+              {
+                "description": "V9 升級為 Zod schema 驅動：menuItemSchema、userSchema（id: string，對應 Better Auth）、sessionUserSchema（SessionUser = { id, email, name }）、orderSchema（userId: string）。TypeScript 型別全部由 z.infer<> 自動推導，消除手動維護兩份型別的問題。",
+                "documentation": {},
+                "id": "18",
+                "name": "共用型別契約 (shared/contracts.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "sharedContracts"
+                },
+                "tags": "Element,Component",
+                "technology": "Zod, TypeScript"
+              },
+              {
+                "description": "透過 @elysiajs/openapi 輸出 Swagger UI（GET /openapi）與 JSON spec（GET /openapi/json）。排除靜態資產路由與 openapi 本身路由。",
+                "documentation": {},
+                "id": "19",
+                "name": "OpenAPI 外掛",
+                "properties": {
+                  "structurizr.dsl.identifier": "openApiPlugin"
+                },
+                "tags": "Element,Component",
+                "technology": "@elysiajs/openapi"
+              },
+              {
+                "description": "toTaipeiDateTime()：使用 Intl.DateTimeFormat sv-SE / Asia/Taipei 將 UTC ISO string 轉換為台北時間字串（YYYY-MM-DD HH:MM:SS 格式），供 toOrderResponse() 使用。",
+                "documentation": {},
+                "id": "20",
+                "name": "時區工具 (util.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "utilModule"
+                },
+                "tags": "Element,Component",
+                "technology": "TypeScript, Intl.DateTimeFormat"
+              },
+              {
+                "description": "drizzle-kit 設定檔。schema 指向 db/schema.ts 與 db/auth-schema.ts；out 輸出至 drizzle/ 目錄（含 SQL 遷移檔與 meta/ 快照）。使用 DATABASE_URL_MIGRATION 或 DATABASE_URL 作為遷移連線字串。",
+                "documentation": {},
+                "id": "21",
+                "name": "Drizzle 遷移設定 (drizzle.config.ts)",
+                "properties": {
+                  "structurizr.dsl.identifier": "drizzleConfig"
+                },
+                "relationships": [
+                  {
+                    "description": "讀取 db/schema.ts 產生遷移 SQL",
+                    "destinationId": "15",
+                    "id": "50",
+                    "sourceId": "21",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "讀取 db/auth-schema.ts 產生遷移 SQL",
+                    "destinationId": "16",
+                    "id": "51",
+                    "sourceId": "21",
+                    "tags": "Relationship"
+                  },
+                  {
+                    "description": "執行 drizzle-kit push/migrate 時連線至 Neon",
+                    "destinationId": "3",
+                    "id": "52",
+                    "sourceId": "21",
+                    "tags": "Relationship",
+                    "technology": "HTTPS"
+                  }
+                ],
+                "tags": "Element,Component",
+                "technology": "drizzle-kit, PostgreSQL"
+              }
+            ],
+            "description": "Bun + Elysia V9 正式入口（backend.ts）。使用 Better Auth 管理 session 與 Google OAuth；@elysia/cors 取代手動 CORS；所有 schema 集中於 shared/route-schemas.ts。根據 STORE_DRIVER 環境變數選擇 PgStore 或 JsonFileStore。",
+            "documentation": {},
+            "id": "6",
+            "name": "後端 API 伺服器",
+            "properties": {
+              "structurizr.dsl.identifier": "apiServer"
+            },
+            "relationships": [
+              {
+                "description": "OAuth 2.0 登入流程（authorize / callback）",
+                "destinationId": "2",
+                "id": "26",
+                "sourceId": "6",
+                "tags": "Relationship",
+                "technology": "HTTPS, Better Auth"
+              },
+              {
+                "description": "讀寫 Better Auth session 與業務資料",
+                "destinationId": "3",
+                "id": "28",
+                "sourceId": "6",
+                "tags": "Relationship",
+                "technology": "TCP/WSS, Drizzle + @neondatabase/serverless"
+              },
+              {
+                "description": "讀寫 data/store.json（tmp+rename 原子寫入）",
+                "destinationId": "22",
+                "id": "47",
+                "linkedRelationshipId": "46",
+                "sourceId": "6",
+                "technology": "Bun file API"
+              }
+            ],
+            "tags": "Element,Container",
+            "technology": "Bun runtime, Elysia framework, TypeScript, Better Auth"
+          },
+          {
+            "description": "data/store.json。當 STORE_DRIVER != postgres 時由 JsonFileStore 使用。儲存 users（string ID 零填補，如 '0001'）、menu（12 項含圖片與描述）、orders（userId: string）、三個自增計數器。",
+            "documentation": {},
+            "id": "22",
+            "name": "JSON 檔案資料庫",
+            "properties": {
+              "structurizr.dsl.identifier": "fileStore"
+            },
+            "tags": "Element,Container,Database",
+            "technology": "data/store.json, Bun file API (local filesystem)"
+          }
+        ],
+        "description": "前後端分離的早餐店點餐平台。V9 使用 Better Auth + Google OAuth 管理身份，Drizzle ORM + Neon PostgreSQL 作為正式資料庫，同時保留 JSON file store 作為開發/教學備用。",
+        "documentation": {},
+        "id": "4",
+        "name": "早餐店點餐系統",
+        "properties": {
+          "structurizr.dsl.identifier": "breakfastSystem"
+        },
+        "relationships": [
+          {
+            "description": "OAuth 2.0 登入流程（authorize / callback）",
+            "destinationId": "2",
+            "id": "27",
+            "linkedRelationshipId": "26",
+            "sourceId": "4",
+            "technology": "HTTPS, Better Auth"
+          },
+          {
+            "description": "讀寫 Better Auth session 與業務資料",
+            "destinationId": "3",
+            "id": "29",
+            "linkedRelationshipId": "28",
+            "sourceId": "4",
+            "technology": "TCP/WSS, Drizzle + @neondatabase/serverless"
+          }
+        ],
+        "tags": "Element,Software System"
+      }
+    ]
   },
-  "name" : "早餐店點餐系統",
-  "properties" : {
-    "structurizr.inspection.error" : "22",
-    "structurizr.dsl" : "d29ya3NwYWNlICLml6nppJDlupfpu57ppJDns7vntbEiICJCcmVha2Zhc3QgU2hvcCBPcmRlcmluZyBTeXN0ZW0g4oCUIFY5IChCZXR0ZXIgQXV0aCArIERyaXp6bGUgKyBOZW9uKSIgewoKICAgIG1vZGVsIHsKCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAgICAgICAjIFBlb3BsZQogICAgICAgICMg4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCgogICAgICAgIGN1c3RvbWVyID0gcGVyc29uICLpoaflrqIiICLpgI/pgY7ntrLpoIHngI/opr3oj5zllq7jgIHliqDlhaXos7znianou4rjgIHku6UgR29vZ2xlIOW4s+iZn+eZu+WFpeOAgeW7uueri+S4pumAgeWHuuioguWWrueahOS4gOiIrOS9v+eUqOiAheOAgiIKCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAgICAgICAjIEV4dGVybmFsIFN5c3RlbXMKICAgICAgICAjIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkAoKICAgICAgICBnb29nbGVPQXV0aCA9IHNvZnR3YXJlU3lzdGVtICJHb29nbGUgSWRlbnRpdHkgUGxhdGZvcm0iICLmj5DkvpsgT0F1dGggMi4wIC8gR29vZ2xlIFNpZ24tSW4g5pyN5YuZ77yM55SxIEJldHRlciBBdXRoIOWRvOWPq+WujOaIkOekvuS6pOeZu+WFpea1geeoi+OAgiIgewogICAgICAgICAgICB0YWdzICJFeHRlcm5hbCIKICAgICAgICB9CgogICAgICAgIG5lb25DbG91ZCA9IHNvZnR3YXJlU3lzdGVtICJOZW9uIChQb3N0Z3JlU1FMIENsb3VkKSIgIlNlcnZlcmxlc3MgUG9zdGdyZVNRTCDpm7Lnq6/os4fmlpnluqvmnI3li5nvvIzlhLLlrZggQmV0dGVyIEF1dGgg6Lqr5Lu96LOH5paZ77yIYmZfdjkudXNlci9zZXNzaW9uL2FjY291bnTvvInoiIfmpa3li5nos4fmlpnvvIhiZl92OS5tZW51X2l0ZW1zL29yZGVycy9vcmRlcl9pdGVtc++8ieOAgiIgewogICAgICAgICAgICB0YWdzICJFeHRlcm5hbCIgIkRhdGFiYXNlIgogICAgICAgIH0KCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAgICAgICAjIFNvZnR3YXJlIFN5c3RlbQogICAgICAgICMg4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCgogICAgICAgIGJyZWFrZmFzdFN5c3RlbSA9IHNvZnR3YXJlU3lzdGVtICLml6nppJDlupfpu57ppJDns7vntbEiICLliY3lvoznq6/liIbpm6LnmoTml6nppJDlupfpu57ppJDlubPlj7DjgIJWOSDkvb/nlKggQmV0dGVyIEF1dGggKyBHb29nbGUgT0F1dGgg566h55CG6Lqr5Lu977yMRHJpenpsZSBPUk0gKyBOZW9uIFBvc3RncmVTUUwg5L2c54K65q2j5byP6LOH5paZ5bqr77yM5ZCM5pmC5L+d55WZIEpTT04gZmlsZSBzdG9yZSDkvZzngrrplovnmbwv5pWZ5a245YKZ55So44CCIiB7CgogICAgICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICAgICAjIENvbnRhaW5lciAxOiBTUEEg5YmN56uvCiAgICAgICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACgogICAgICAgICAgICBzcGEgPSBjb250YWluZXIgIlNQQSDliY3nq68iICLlnKjngI/opr3lmajkuK3ln7fooYznmoQgUmVhY3Qg5oeJ55So44CCVjkg5L2/55SoIEdFVCAvYXBpL2F1dGgvZ2V0LXNlc3Npb24g5oGi5b6pIHNlc3Npb27vvIhjb29raWUtYmFzZWTvvIzkuI3lho3nlKggbG9jYWxTdG9yYWdl77yJ77yb5omA5pyJIEFQSSDoq4vmsYLluLYgY3JlZGVudGlhbHM6aW5jbHVkZe+8m+aUr+aPtCBHb29nbGUgU2lnbi1JbiDmtYHnqIvjgIIiICJSZWFjdCAxOSwgVHlwZVNjcmlwdCwgVml0ZSA1LCBUYWlsd2luZENTUywgRGFpc3lVSSIgewogICAgICAgICAgICAgICAgdGFncyAiQnJvd3NlciIKICAgICAgICAgICAgfQoKICAgICAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAgICAgIyBDb250YWluZXIgMjog5b6M56uvIEFQSSDkvLrmnI3lmagKICAgICAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKCiAgICAgICAgICAgIGFwaVNlcnZlciA9IGNvbnRhaW5lciAi5b6M56uvIEFQSSDkvLrmnI3lmagiICJCdW4gKyBFbHlzaWEgVjkg5q2j5byP5YWl5Y+j77yIYmFja2VuZC50c++8ieOAguS9v+eUqCBCZXR0ZXIgQXV0aCDnrqHnkIYgc2Vzc2lvbiDoiIcgR29vZ2xlIE9BdXRo77ybQGVseXNpYS9jb3JzIOWPluS7o+aJi+WLlSBDT1JT77yb5omA5pyJIHNjaGVtYSDpm4bkuK3mlrwgc2hhcmVkL3JvdXRlLXNjaGVtYXMudHPjgILmoLnmk5ogU1RPUkVfRFJJVkVSIOeSsOWig+iuiuaVuOmBuOaThyBQZ1N0b3JlIOaIliBKc29uRmlsZVN0b3Jl44CCIiAiQnVuIHJ1bnRpbWUsIEVseXNpYSBmcmFtZXdvcmssIFR5cGVTY3JpcHQsIEJldHRlciBBdXRoIiB7CgogICAgICAgICAgICAgICAgcm91dGVMYXllciA9IGNvbXBvbmVudCAi6Lev55Sx5bGkIChiYWNrZW5kLnRzKSIgIlY5IOato+W8j+WFpeWPo+OAguaOm+i8iSBjb3JzIOWkluaOm+OAgW9wZW5hcGkg5aSW5o6b77yb6YCP6YGOIGF1dGguaGFuZGxlciDku6PnkIbmiYDmnIkgL2FwaS9hdXRoLyog6KuL5rGC6IezIEJldHRlciBBdXRo77yb5LulIHJlcXVpcmVVc2VyKCkg5L+d6K23IG9yZGVyIOebuOmXnOi3r+eUse+8m3NjaGVtYXMg5YWo6YOoIGltcG9ydCDoh6ogc2hhcmVkL3JvdXRlLXNjaGVtYXMudHPjgIIiICJFbHlzaWEgcm91dGVzIgoKICAgICAgICAgICAgICAgIGJldHRlckF1dGhNb2R1bGUgPSBjb21wb25lbnQgIkJldHRlciBBdXRoIOaooee1hCAoYXV0aC9iZXR0ZXItYXV0aC50cykiICLlu7rnq4sgQmV0dGVyIEF1dGgg5a+m5L6L77yaZHJpenpsZUFkYXB0ZXIg6YCj5o6lIE5lb24gUG9zdGdyZVNRTOOAgeWDheWVn+eUqCBHb29nbGUgT0F1dGjvvIjnpoHnlKggZW1haWwvcGFzc3dvcmTvvInjgILllZ/li5XmmYLpqZforYkgQkVUVEVSX0FVVEhfU0VDUkVUIOWtmOWcqOS4lOmdnumgkOioreWAvOOAguaPkOS+myBnZXRDdXJyZW50VXNlcigpIGhlbHBlciDlsIcgc2Vzc2lvbiDovYnmj5vmiJAgU2Vzc2lvblVzZXLjgIIiICJiZXR0ZXItYXV0aCwgZHJpenpsZS1hZGFwdGVyIgoKICAgICAgICAgICAgICAgIHVzZXJNYXBwZXIgPSBjb21wb25lbnQgIlVzZXIgTWFwcGVyIChhdXRoL3VzZXItbWFwcGVyLnRzKSIgInRvU2Vzc2lvblVzZXIoKe+8muWwhyBCZXR0ZXIgQXV0aCBEQiB1c2Vy77yI5ZCrIGVtYWlsVmVyaWZpZWQgLyBpbWFnZSDnrYnmrITkvY3vvInmipXlvbHngrogY29udHJhY3RzLnRzIOWumue+qeeahCBTZXNzaW9uVXNlcu+8iGlkLCBlbWFpbCwgbmFtZe+8ie+8jOS4jeWwjeWkluaatOmcsuaVj+aEn+ashOS9jeOAgiIgIlR5cGVTY3JpcHQiCgogICAgICAgICAgICAgICAgc3RvcmVGYWN0b3J5ID0gY29tcG9uZW50ICJTdG9yZSDlt6Xlu6AgKHN0b3JlL2luZGV4LnRzKSIgIuW3peW7oOWHveW8jyBjcmVhdGVTdG9yZSgp44CC6K6A5Y+WIFNUT1JFX0RSSVZFUiDnkrDlooPorormlbjvvJoncG9zdGdyZXMnIOKGkiBQZ1N0b3Jl77yITmVvbu+8ie+8m+WFtuS7liDihpIgSnNvbkZpbGVTdG9yZe+8iGRhdGEvc3RvcmUuanNvbu+8ieOAguWbnuWCs+Wei+WIpeWbuuWumueCuiBTdG9yZSDku4vpnaLvvIzot6/nlLHlsaTkuI3mhJ/nn6Xlhbfpq5Tlr6bkvZzjgIIiICJUeXBlU2NyaXB0IGZhY3RvcnkgZnVuY3Rpb24iCgogICAgICAgICAgICAgICAgc3RvcmVJbnRlcmZhY2UgPSBjb21wb25lbnQgIlN0b3JlIOS7i+mdoiAoc3RvcmUvU3RvcmUudHMpIiAiVjkg57K+57Ch54mI6LOH5paZ5a2Y5Y+W5aWR57SE77yaYXV0aCDnm7jpl5zmlrnms5Xlt7Lnp7vpmaTvvIjnlLEgQmV0dGVyIEF1dGgg6LKg6LKs77yJ77yMdXNlcklkIOWFqOmdouaUueeCuiBzdHJpbmfvvIjlsI3mh4kgQmV0dGVyIEF1dGggc3RyaW5nIElE77yJ44CC5L+d55WZIG1lbnUgQ1JVROOAgW9yZGVyIENSVUQg6IiHIHN1Ym1pdE9yZGVy44CCIiAiVHlwZVNjcmlwdCBpbnRlcmZhY2UiCgogICAgICAgICAgICAgICAgcGdTdG9yZSA9IGNvbXBvbmVudCAiUGdTdG9yZSAoc3RvcmUvcGcvUGdTdG9yZS50cykiICJTdG9yZSDku4vpnaLnmoQgUG9zdGdyZVNRTCDlr6bkvZzvvIzkvb/nlKggRHJpenpsZSBPUk0gKyBOZW9uIHNlcnZlcmxlc3MgcG9vbOOAgmluaXQoKSDmqqLmn6UgREIg6YCj57ea44CB5b6eIGRhdGEvc3RvcmUuanNvbiDnqK7lhaXliJ3lp4voj5zllq7vvIjoi6UgREIg54K656m677yJ44CB5b6eIERCIOmHjeaWsOi8ieWFpeizh+aWmeiHs+iomOaGtumrlOW/q+WPluOAgiIgIlR5cGVTY3JpcHQgY2xhc3MsIERyaXp6bGUgT1JNIgoKICAgICAgICAgICAgICAgIGpzb25GaWxlU3RvcmUgPSBjb21wb25lbnQgIkpzb25GaWxlU3RvcmUgKHN0b3JlL2pzb24vSnNvbkZpbGVTdG9yZS50cykiICJTdG9yZSDku4vpnaLnmoQgSlNPTiDmqpTmoYjlgpnnlKjlr6bkvZzjgILlkKsgaW5pdCgp44CBbm9ybWFsaXplTWVudUl0ZW0vbm9ybWFsaXplVXNlci9ub3JtYWxpemVVc2VySWQg55u45a656IiK6LOH5paZ44CBdG1wK3JlbmFtZSDljp/lrZDlr6vlhaXjgIFQcm9taXNlIGNoYWluIHBlcnNpc3QgcXVldWXjgILpoJDoqK3kvb/nlKjogIXvvJpkZW1vQGV4YW1wbGUuY29tIC8gYW15QGV4YW1wbGUuY29t77yIcGFzc3dvcmQ6IDEyMzTvvInjgIIiICJUeXBlU2NyaXB0IGNsYXNzLCBCdW4gZmlsZSBBUEkiCgogICAgICAgICAgICAgICAgZGJDbGllbnQgPSBjb21wb25lbnQgIkRCIENsaWVudCAoZGIvY2xpZW50LnRzKSIgIuS7pSBAbmVvbmRhdGFiYXNlL3NlcnZlcmxlc3MgUG9vbCDlu7rnq4sgV2ViU29ja2V0IOmAo+e3mu+8jOmAj+mBjiBkcml6emxlKCkg5bu656uLIE9STSDlr6bkvovvvIzlkIzmmYIgc3ByZWFkIGJ1c2luZXNzIHNjaGVtYSDoiIcgYXV0aCBzY2hlbWHjgILllZ/li5XmmYLoi6XnhKEgREFUQUJBU0VfVVJMIOWNs+aLi+mMr+OAgiIgIkBuZW9uZGF0YWJhc2Uvc2VydmVybGVzcywgZHJpenpsZS1vcm0vbmVvbi1zZXJ2ZXJsZXNzIgoKICAgICAgICAgICAgICAgIGJpelNjaGVtYSA9IGNvbXBvbmVudCAiQnVzaW5lc3MgU2NoZW1hIChkYi9zY2hlbWEudHMpIiAiRHJpenpsZSDmpa3li5nos4fmlpnooajlrprnvqnvvIznva7mlrwgUEdfU0NIRU1B77yI6aCQ6KitIGJmX3Y577yJbmFtZXNwYWNl77yabWVudV9pdGVtc++8iOiHquWiniBQS++8ieOAgW9yZGVyc++8iHVzZXJJZCDlpJbpjbXlsI3mh4kgQmV0dGVyIEF1dGggdXNlci5pZO+8ieOAgW9yZGVyX2l0ZW1z77yI5Y+N5q2j6KaP5YyW77yM5ZCrIG5hbWUvcHJpY2UvY2F0ZWdvcnkvZGVzY3JpcHRpb24vaW1hZ2VfdXJs77yJ44CCIiAiRHJpenpsZSBPUk0sIGRyaXp6bGUtb3JtL3BnLWNvcmUiCgogICAgICAgICAgICAgICAgYXV0aFNjaGVtYSA9IGNvbXBvbmVudCAiQXV0aCBTY2hlbWEgKGRiL2F1dGgtc2NoZW1hLnRzKSIgIkJldHRlciBBdXRoIOaJgOmcgOizh+aWmeihqO+8mnVzZXIgLyBzZXNzaW9uIC8gYWNjb3VudCAvIHZlcmlmaWNhdGlvbu+8jOeUsSBiZXR0ZXJBdXRoIGRyaXp6bGVBZGFwdGVyIOiHquWLlee2reitt++8jOiIh+alreWLmSB0YWJsZXMg5ZCM6JmVIE5lb24gUG9zdGdyZVNRTCBiZl92OSBzY2hlbWHjgIIiICJiZXR0ZXItYXV0aCwgRHJpenpsZSBPUk0iCgogICAgICAgICAgICAgICAgcm91dGVTY2hlbWFzID0gY29tcG9uZW50ICJSb3V0ZSBTY2hlbWFzIChzaGFyZWQvcm91dGUtc2NoZW1hcy50cykiICJab2QtYmFzZWQgQVBJIOWxpCBzY2hlbWEg6ZuG5Lit5a6a576p77yacmVxdWVzdCBib2R5L3BhcmFtcyBzY2hlbWHvvIhjcmVhdGVNZW51SXRlbUJvZHlTY2hlbWEg562J77yJ44CBcmVzcG9uc2UgZW52ZWxvcGUgc2NoZW1h77yIbWVudUxpc3RSZXNwb25zZVNjaGVtYSDnrYnvvInjgIFPcmRlclJlc3BvbnNlIOWei+WIpeiIhyB0b09yZGVyUmVzcG9uc2UoKSDovYnmj5vlh73lvI/jgIIiICJab2QsIFR5cGVTY3JpcHQiCgogICAgICAgICAgICAgICAgc2hhcmVkQ29udHJhY3RzID0gY29tcG9uZW50ICLlhbHnlKjlnovliKXlpZHntIQgKHNoYXJlZC9jb250cmFjdHMudHMpIiAiVjkg5Y2H57Sa54K6IFpvZCBzY2hlbWEg6amF5YuV77yabWVudUl0ZW1TY2hlbWHjgIF1c2VyU2NoZW1h77yIaWQ6IHN0cmluZ++8jOWwjeaHiSBCZXR0ZXIgQXV0aO+8ieOAgXNlc3Npb25Vc2VyU2NoZW1h77yIU2Vzc2lvblVzZXIgPSB7IGlkLCBlbWFpbCwgbmFtZSB977yJ44CBb3JkZXJTY2hlbWHvvIh1c2VySWQ6IHN0cmluZ++8ieOAglR5cGVTY3JpcHQg5Z6L5Yil5YWo6YOo55SxIHouaW5mZXI8PiDoh6rli5XmjqjlsI7vvIzmtojpmaTmiYvli5Xntq3orbflhanku73lnovliKXnmoTllY/poYzjgIIiICJab2QsIFR5cGVTY3JpcHQiCgogICAgICAgICAgICAgICAgb3BlbkFwaVBsdWdpbiA9IGNvbXBvbmVudCAiT3BlbkFQSSDlpJbmjpsiICLpgI/pgY4gQGVseXNpYWpzL29wZW5hcGkg6Ly45Ye6IFN3YWdnZXIgVUnvvIhHRVQgL29wZW5hcGnvvInoiIcgSlNPTiBzcGVj77yIR0VUIC9vcGVuYXBpL2pzb27vvInjgILmjpLpmaTpnZzmhYvos4fnlKLot6/nlLHoiIcgb3BlbmFwaSDmnKzouqvot6/nlLHjgIIiICJAZWx5c2lhanMvb3BlbmFwaSIKCiAgICAgICAgICAgICAgICB1dGlsTW9kdWxlID0gY29tcG9uZW50ICLmmYLljYDlt6XlhbcgKHV0aWwudHMpIiAidG9UYWlwZWlEYXRlVGltZSgp77ya5L2/55SoIEludGwuRGF0ZVRpbWVGb3JtYXQgc3YtU0UgLyBBc2lhL1RhaXBlaSDlsIcgVVRDIElTTyBzdHJpbmcg6L2J5o+b54K65Y+w5YyX5pmC6ZaT5a2X5Liy77yIWVlZWS1NTS1ERCBISDpNTTpTUyDmoLzlvI/vvInvvIzkvpsgdG9PcmRlclJlc3BvbnNlKCkg5L2/55So44CCIiAiVHlwZVNjcmlwdCwgSW50bC5EYXRlVGltZUZvcm1hdCIKCiAgICAgICAgICAgICAgICBkcml6emxlQ29uZmlnID0gY29tcG9uZW50ICJEcml6emxlIOmBt+enu+ioreWumiAoZHJpenpsZS5jb25maWcudHMpIiAiZHJpenpsZS1raXQg6Kit5a6a5qqU44CCc2NoZW1hIOaMh+WQkSBkYi9zY2hlbWEudHMg6IiHIGRiL2F1dGgtc2NoZW1hLnRz77ybb3V0IOi8uOWHuuiHsyBkcml6emxlLyDnm67pjITvvIjlkKsgU1FMIOmBt+enu+aqlOiIhyBtZXRhLyDlv6vnhafvvInjgILkvb/nlKggREFUQUJBU0VfVVJMX01JR1JBVElPTiDmiJYgREFUQUJBU0VfVVJMIOS9nOeCuumBt+enu+mAo+e3muWtl+S4suOAgiIgImRyaXp6bGUta2l0LCBQb3N0Z3JlU1FMIgogICAgICAgICAgICB9CgogICAgICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICAgICAjIENvbnRhaW5lciAzOiBKU09OIOaqlOahiOizh+aWmeW6q++8iOmWi+eZvC/lgpnnlKjvvIkKICAgICAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKCiAgICAgICAgICAgIGZpbGVTdG9yZSA9IGNvbnRhaW5lciAiSlNPTiDmqpTmoYjos4fmlpnluqsiICJkYXRhL3N0b3JlLmpzb27jgILnlbYgU1RPUkVfRFJJVkVSICE9IHBvc3RncmVzIOaZgueUsSBKc29uRmlsZVN0b3JlIOS9v+eUqOOAguWEsuWtmCB1c2Vyc++8iHN0cmluZyBJRCDpm7bloavoo5zvvIzlpoIgJzAwMDEn77yJ44CBbWVude+8iDEyIOmgheWQq+WclueJh+iIh+aPj+i/sO+8ieOAgW9yZGVyc++8iHVzZXJJZDogc3RyaW5n77yJ44CB5LiJ5YCL6Ieq5aKe6KiI5pW45Zmo44CCIiAiZGF0YS9zdG9yZS5qc29uLCBCdW4gZmlsZSBBUEkgKGxvY2FsIGZpbGVzeXN0ZW0pIiB7CiAgICAgICAgICAgICAgICB0YWdzICJEYXRhYmFzZSIKICAgICAgICAgICAgfQogICAgICAgIH0KCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAgICAgICAjIFJlbGF0aW9uc2hpcHMg4oCUIFN5c3RlbSBDb250ZXh0IGxldmVsCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKCiAgICAgICAgY3VzdG9tZXIgLT4gc3BhICLngI/opr3oj5zllq7jgIHku6UgR29vZ2xlIOW4s+iZn+eZu+WFpeOAgeW7uueri+S4pumAgeWHuuioguWWriIgIkhUVFBTIC8gQnJvd3NlciIKICAgICAgICBzcGEgLT4gYXBpU2VydmVyICLlkbzlj6sgUkVTVCBBUEnvvIjlkKsgY3JlZGVudGlhbHM6aW5jbHVkZe+8iSIgIkhUVFAvSlNPTiIKICAgICAgICBhcGlTZXJ2ZXIgLT4gZ29vZ2xlT0F1dGggIk9BdXRoIDIuMCDnmbvlhaXmtYHnqIvvvIhhdXRob3JpemUgLyBjYWxsYmFja++8iSIgIkhUVFBTLCBCZXR0ZXIgQXV0aCIKICAgICAgICBhcGlTZXJ2ZXIgLT4gbmVvbkNsb3VkICLoroDlr6sgQmV0dGVyIEF1dGggc2Vzc2lvbiDoiIfmpa3li5nos4fmlpkiICJUQ1AvV1NTLCBEcml6emxlICsgQG5lb25kYXRhYmFzZS9zZXJ2ZXJsZXNzIgoKICAgICAgICAjIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkAogICAgICAgICMgUmVsYXRpb25zaGlwcyDigJQgQ29tcG9uZW50IGxldmVsCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKCiAgICAgICAgIyDot6/nlLHlsaQg4oaSIOWQhOaooee1hAogICAgICAgIHJvdXRlTGF5ZXIgLT4gYmV0dGVyQXV0aE1vZHVsZSAiYXV0aC5oYW5kbGVyIOS7o+eQhiAvYXBpL2F1dGgvKiDoq4vmsYLvvJtyZXF1aXJlVXNlcigpIOWPluW+lyBzZXNzaW9uIgogICAgICAgIHJvdXRlTGF5ZXIgLT4gc3RvcmVGYWN0b3J5ICJjcmVhdGVTdG9yZSh7IGRhdGFGaWxlUGF0aCB9KSDlj5blvpcgc3RvcmUg5a+m5L6LIgogICAgICAgIHJvdXRlTGF5ZXIgLT4gcm91dGVTY2hlbWFzICJpbXBvcnQg5omA5pyJIFpvZCByZXF1ZXN0L3Jlc3BvbnNlIHNjaGVtYXMg6IiHIHRvT3JkZXJSZXNwb25zZSgpIgogICAgICAgIHJvdXRlTGF5ZXIgLT4gb3BlbkFwaVBsdWdpbiAiYXBwLnVzZShvcGVuYXBpKC4uLikpIOaOm+i8ieWkluaOmyIKICAgICAgICByb3V0ZUxheWVyIC0+IHV0aWxNb2R1bGUgImltcG9ydCB0b1RhaXBlaURhdGVUaW1l77yI6IiKIHY3IOi3r+eUseS7jeebtOaOpeS9v+eUqO+8iSIKCiAgICAgICAgIyBCZXR0ZXIgQXV0aCDmqKHntYQKICAgICAgICBiZXR0ZXJBdXRoTW9kdWxlIC0+IGRiQ2xpZW50ICJkcml6emxlQWRhcHRlcihkYikg6YCj5o6l6LOH5paZ5bqrIgogICAgICAgIGJldHRlckF1dGhNb2R1bGUgLT4gYXV0aFNjaGVtYSAi6K6A5a+rIHVzZXIvc2Vzc2lvbi9hY2NvdW50L3ZlcmlmaWNhdGlvbiDos4fmlpnooagiCiAgICAgICAgYmV0dGVyQXV0aE1vZHVsZSAtPiB1c2VyTWFwcGVyICJ0b1Nlc3Npb25Vc2VyKCkg6L2J5o+bIERCIHVzZXIg4oaSIFNlc3Npb25Vc2VyIgogICAgICAgIGJldHRlckF1dGhNb2R1bGUgLT4gZ29vZ2xlT0F1dGggIk9BdXRoIDIuMCBhdXRob3JpemUgJiBjYWxsYmFjayIgIkhUVFBTIgoKICAgICAgICAjIFN0b3JlIOW3peW7oCDihpIg5a+m5L2cCiAgICAgICAgc3RvcmVGYWN0b3J5IC0+IHBnU3RvcmUgIlNUT1JFX0RSSVZFUj1wb3N0Z3JlcyDmmYLlu7rnq4sgUGdTdG9yZSDlr6bkvosiCiAgICAgICAgc3RvcmVGYWN0b3J5IC0+IGpzb25GaWxlU3RvcmUgIuWFtuS7luaDheazgeW7uueriyBKc29uRmlsZVN0b3JlIOWvpuS+iyIKICAgICAgICBwZ1N0b3JlIC0+IHN0b3JlSW50ZXJmYWNlICJpbXBsZW1lbnRzIFN0b3JlIOS7i+mdoiIKICAgICAgICBqc29uRmlsZVN0b3JlIC0+IHN0b3JlSW50ZXJmYWNlICJpbXBsZW1lbnRzIFN0b3JlIOS7i+mdoiIKCiAgICAgICAgIyBQZ1N0b3JlIOKGkiBEQgogICAgICAgIHBnU3RvcmUgLT4gZGJDbGllbnQgIumAj+mBjiBEcml6emxlIE9STSDln7fooYwgU1FMIgogICAgICAgIGRiQ2xpZW50IC0+IGJpelNjaGVtYSAibWVudV9pdGVtcyAvIG9yZGVycyAvIG9yZGVyX2l0ZW1zIOizh+aWmeihqOaTjeS9nCIKICAgICAgICBkYkNsaWVudCAtPiBuZW9uQ2xvdWQgIldlYlNvY2tldCDpgKPnt5roh7MgTmVvbiBzZXJ2ZXJsZXNzIHBvb2wiICJXU1MiCgogICAgICAgICMgSnNvbkZpbGVTdG9yZSDihpIg5pys5Zyw5qqU5qGICiAgICAgICAganNvbkZpbGVTdG9yZSAtPiBmaWxlU3RvcmUgIuiugOWvqyBkYXRhL3N0b3JlLmpzb27vvIh0bXArcmVuYW1lIOWOn+WtkOWvq+WFpe+8iSIgIkJ1biBmaWxlIEFQSSIKCiAgICAgICAgIyBSb3V0ZSBTY2hlbWFzIOKGkiBTaGFyZWQgQ29udHJhY3RzCiAgICAgICAgcm91dGVTY2hlbWFzIC0+IHNoYXJlZENvbnRyYWN0cyAiaW1wb3J0IG1lbnVJdGVtU2NoZW1hLCBvcmRlclNjaGVtYe+8iOikh+eUqOalreWLmSBzY2hlbWHvvIkiCiAgICAgICAgcm91dGVTY2hlbWFzIC0+IHV0aWxNb2R1bGUgImltcG9ydCB0b1RhaXBlaURhdGVUaW1lIOS+myB0b09yZGVyUmVzcG9uc2UoKSDkvb/nlKgiCiAgICAgICAgZHJpenpsZUNvbmZpZyAtPiBiaXpTY2hlbWEgIuiugOWPliBkYi9zY2hlbWEudHMg55Si55Sf6YG356e7IFNRTCIKICAgICAgICBkcml6emxlQ29uZmlnIC0+IGF1dGhTY2hlbWEgIuiugOWPliBkYi9hdXRoLXNjaGVtYS50cyDnlKLnlJ/pgbfnp7sgU1FMIgogICAgICAgIGRyaXp6bGVDb25maWcgLT4gbmVvbkNsb3VkICLln7fooYwgZHJpenpsZS1raXQgcHVzaC9taWdyYXRlIOaZgumAo+e3muiHsyBOZW9uIiAiSFRUUFMiCiAgICAgICAgc3BhIC0+IHNoYXJlZENvbnRyYWN0cyAiaW1wb3J0IHR5cGUgTWVudUl0ZW0sIE9yZGVyLCBTZXNzaW9uVXNlcu+8iGNvbXBpbGUtdGltZe+8iSIgIlR5cGVTY3JpcHQiCgogICAgICAgICMgU2NoZW1hIOmXnOiBrwogICAgICAgIGJpelNjaGVtYSAtPiBhdXRoU2NoZW1hICJvcmRlcnNUYWJsZS51c2VySWQg4oaSIEJldHRlciBBdXRoIHVzZXIuaWQg5aSW6Y21IgogICAgfQoKICAgICMg4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCiAgICAjIFZpZXdzCiAgICAjIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkAoKICAgIHZpZXdzIHsKCiAgICAgICAgc3lzdGVtQ29udGV4dCBicmVha2Zhc3RTeXN0ZW0gIlN5c3RlbUNvbnRleHQiICLml6nppJDlupfpu57ppJDns7vntbEg4oCUIFN5c3RlbSBDb250ZXh077yIQzQgTGV2ZWwgMe+8iSIgewogICAgICAgICAgICBpbmNsdWRlICoKICAgICAgICAgICAgYXV0b0xheW91dCB0YgogICAgICAgIH0KCiAgICAgICAgY29udGFpbmVyIGJyZWFrZmFzdFN5c3RlbSAiQ29udGFpbmVyVmlldyIgIuaXqemkkOW6l+m7numkkOezu+e1sSDigJQgQ29udGFpbmVyIFZpZXfvvIhDNCBMZXZlbCAy77yJIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgICAgICBhdXRvTGF5b3V0IGxyCiAgICAgICAgfQoKICAgICAgICBjb21wb25lbnQgYXBpU2VydmVyICJCYWNrZW5kQ29tcG9uZW50cyIgIuW+jOerryBBUEkg5Ly65pyN5ZmoIOKAlCBDb21wb25lbnQgVmlld++8iEM0IExldmVsIDPvvIkiIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgICAgIGF1dG9MYXlvdXQgbHIKICAgICAgICB9CgogICAgICAgIHN0eWxlcyB7CiAgICAgICAgICAgIGVsZW1lbnQgIlBlcnNvbiIgewogICAgICAgICAgICAgICAgc2hhcGUgUGVyc29uCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICMwODQyN0IKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJTb2Z0d2FyZSBTeXN0ZW0iIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzExNjhCRAogICAgICAgICAgICAgICAgY29sb3IgI2ZmZmZmZgogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgIkV4dGVybmFsIiB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM5OTk5OTkKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJDb250YWluZXIiIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzQzOERENQogICAgICAgICAgICAgICAgY29sb3IgI2ZmZmZmZgogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgIkNvbXBvbmVudCIgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjODVCQkYwCiAgICAgICAgICAgICAgICBjb2xvciAjMDAwMDAwCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCAiRGF0YWJhc2UiIHsKICAgICAgICAgICAgICAgIHNoYXBlIEN5bGluZGVyCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM0MzhERDUKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJCcm93c2VyIiB7CiAgICAgICAgICAgICAgICBzaGFwZSBXZWJCcm93c2VyCiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICB9Cn0=",
-    "structurizr.inspection.info" : "0",
-    "structurizr.inspection.ignore" : "0",
-    "structurizr.inspection.warning" : "0"
+  "name": "早餐店點餐系統",
+  "properties": {
+    "structurizr.inspection.error": "22",
+    "structurizr.dsl": "d29ya3NwYWNlICLml6nppJDlupfpu57ppJDns7vntbEiICJCcmVha2Zhc3QgU2hvcCBPcmRlcmluZyBTeXN0ZW0g4oCUIFY5IChCZXR0ZXIgQXV0aCArIERyaXp6bGUgKyBOZW9uKSIgewoKICAgIG1vZGVsIHsKCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAgICAgICAjIFBlb3BsZQogICAgICAgICMg4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCgogICAgICAgIGN1c3RvbWVyID0gcGVyc29uICLpoaflrqIiICLpgI/pgY7ntrLpoIHngI/opr3oj5zllq7jgIHliqDlhaXos7znianou4rjgIHku6UgR29vZ2xlIOW4s+iZn+eZu+WFpeOAgeW7uueri+S4pumAgeWHuuioguWWrueahOS4gOiIrOS9v+eUqOiAheOAgiIKCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAgICAgICAjIEV4dGVybmFsIFN5c3RlbXMKICAgICAgICAjIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkAoKICAgICAgICBnb29nbGVPQXV0aCA9IHNvZnR3YXJlU3lzdGVtICJHb29nbGUgSWRlbnRpdHkgUGxhdGZvcm0iICLmj5DkvpsgT0F1dGggMi4wIC8gR29vZ2xlIFNpZ24tSW4g5pyN5YuZ77yM55SxIEJldHRlciBBdXRoIOWRvOWPq+WujOaIkOekvuS6pOeZu+WFpea1geeoi+OAgiIgewogICAgICAgICAgICB0YWdzICJFeHRlcm5hbCIKICAgICAgICB9CgogICAgICAgIG5lb25DbG91ZCA9IHNvZnR3YXJlU3lzdGVtICJOZW9uIChQb3N0Z3JlU1FMIENsb3VkKSIgIlNlcnZlcmxlc3MgUG9zdGdyZVNRTCDpm7Lnq6/os4fmlpnluqvmnI3li5nvvIzlhLLlrZggQmV0dGVyIEF1dGgg6Lqr5Lu96LOH5paZ77yIYmZfdjkudXNlci9zZXNzaW9uL2FjY291bnTvvInoiIfmpa3li5nos4fmlpnvvIhiZl92OS5tZW51X2l0ZW1zL29yZGVycy9vcmRlcl9pdGVtc++8ieOAgiIgewogICAgICAgICAgICB0YWdzICJFeHRlcm5hbCIgIkRhdGFiYXNlIgogICAgICAgIH0KCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAgICAgICAjIFNvZnR3YXJlIFN5c3RlbQogICAgICAgICMg4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCgogICAgICAgIGJyZWFrZmFzdFN5c3RlbSA9IHNvZnR3YXJlU3lzdGVtICLml6nppJDlupfpu57ppJDns7vntbEiICLliY3lvoznq6/liIbpm6LnmoTml6nppJDlupfpu57ppJDlubPlj7DjgIJWOSDkvb/nlKggQmV0dGVyIEF1dGggKyBHb29nbGUgT0F1dGgg566h55CG6Lqr5Lu977yMRHJpenpsZSBPUk0gKyBOZW9uIFBvc3RncmVTUUwg5L2c54K65q2j5byP6LOH5paZ5bqr77yM5ZCM5pmC5L+d55WZIEpTT04gZmlsZSBzdG9yZSDkvZzngrrplovnmbwv5pWZ5a245YKZ55So44CCIiB7CgogICAgICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICAgICAjIENvbnRhaW5lciAxOiBTUEEg5YmN56uvCiAgICAgICAgICAgICMg4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSACgogICAgICAgICAgICBzcGEgPSBjb250YWluZXIgIlNQQSDliY3nq68iICLlnKjngI/opr3lmajkuK3ln7fooYznmoQgUmVhY3Qg5oeJ55So44CCVjkg5L2/55SoIEdFVCAvYXBpL2F1dGgvZ2V0LXNlc3Npb24g5oGi5b6pIHNlc3Npb27vvIhjb29raWUtYmFzZWTvvIzkuI3lho3nlKggbG9jYWxTdG9yYWdl77yJ77yb5omA5pyJIEFQSSDoq4vmsYLluLYgY3JlZGVudGlhbHM6aW5jbHVkZe+8m+aUr+aPtCBHb29nbGUgU2lnbi1JbiDmtYHnqIvjgIIiICJSZWFjdCAxOSwgVHlwZVNjcmlwdCwgVml0ZSA1LCBUYWlsd2luZENTUywgRGFpc3lVSSIgewogICAgICAgICAgICAgICAgdGFncyAiQnJvd3NlciIKICAgICAgICAgICAgfQoKICAgICAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKICAgICAgICAgICAgIyBDb250YWluZXIgMjog5b6M56uvIEFQSSDkvLrmnI3lmagKICAgICAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKCiAgICAgICAgICAgIGFwaVNlcnZlciA9IGNvbnRhaW5lciAi5b6M56uvIEFQSSDkvLrmnI3lmagiICJCdW4gKyBFbHlzaWEgVjkg5q2j5byP5YWl5Y+j77yIYmFja2VuZC50c++8ieOAguS9v+eUqCBCZXR0ZXIgQXV0aCDnrqHnkIYgc2Vzc2lvbiDoiIcgR29vZ2xlIE9BdXRo77ybQGVseXNpYS9jb3JzIOWPluS7o+aJi+WLlSBDT1JT77yb5omA5pyJIHNjaGVtYSDpm4bkuK3mlrwgc2hhcmVkL3JvdXRlLXNjaGVtYXMudHPjgILmoLnmk5ogU1RPUkVfRFJJVkVSIOeSsOWig+iuiuaVuOmBuOaThyBQZ1N0b3JlIOaIliBKc29uRmlsZVN0b3Jl44CCIiAiQnVuIHJ1bnRpbWUsIEVseXNpYSBmcmFtZXdvcmssIFR5cGVTY3JpcHQsIEJldHRlciBBdXRoIiB7CgogICAgICAgICAgICAgICAgcm91dGVMYXllciA9IGNvbXBvbmVudCAi6Lev55Sx5bGkIChiYWNrZW5kLnRzKSIgIlY5IOato+W8j+WFpeWPo+OAguaOm+i8iSBjb3JzIOWkluaOm+OAgW9wZW5hcGkg5aSW5o6b77yb6YCP6YGOIGF1dGguaGFuZGxlciDku6PnkIbmiYDmnIkgL2FwaS9hdXRoLyog6KuL5rGC6IezIEJldHRlciBBdXRo77yb5LulIHJlcXVpcmVVc2VyKCkg5L+d6K23IG9yZGVyIOebuOmXnOi3r+eUse+8m3NjaGVtYXMg5YWo6YOoIGltcG9ydCDoh6ogc2hhcmVkL3JvdXRlLXNjaGVtYXMudHPjgIIiICJFbHlzaWEgcm91dGVzIgoKICAgICAgICAgICAgICAgIGJldHRlckF1dGhNb2R1bGUgPSBjb21wb25lbnQgIkJldHRlciBBdXRoIOaooee1hCAoYXV0aC9iZXR0ZXItYXV0aC50cykiICLlu7rnq4sgQmV0dGVyIEF1dGgg5a+m5L6L77yaZHJpenpsZUFkYXB0ZXIg6YCj5o6lIE5lb24gUG9zdGdyZVNRTOOAgeWDheWVn+eUqCBHb29nbGUgT0F1dGjvvIjnpoHnlKggZW1haWwvcGFzc3dvcmTvvInjgILllZ/li5XmmYLpqZforYkgQkVUVEVSX0FVVEhfU0VDUkVUIOWtmOWcqOS4lOmdnumgkOioreWAvOOAguaPkOS+myBnZXRDdXJyZW50VXNlcigpIGhlbHBlciDlsIcgc2Vzc2lvbiDovYnmj5vmiJAgU2Vzc2lvblVzZXLjgIIiICJiZXR0ZXItYXV0aCwgZHJpenpsZS1hZGFwdGVyIgoKICAgICAgICAgICAgICAgIHVzZXJNYXBwZXIgPSBjb21wb25lbnQgIlVzZXIgTWFwcGVyIChhdXRoL3VzZXItbWFwcGVyLnRzKSIgInRvU2Vzc2lvblVzZXIoKe+8muWwhyBCZXR0ZXIgQXV0aCBEQiB1c2Vy77yI5ZCrIGVtYWlsVmVyaWZpZWQgLyBpbWFnZSDnrYnmrITkvY3vvInmipXlvbHngrogY29udHJhY3RzLnRzIOWumue+qeeahCBTZXNzaW9uVXNlcu+8iGlkLCBlbWFpbCwgbmFtZe+8ie+8jOS4jeWwjeWkluaatOmcsuaVj+aEn+ashOS9jeOAgiIgIlR5cGVTY3JpcHQiCgogICAgICAgICAgICAgICAgc3RvcmVGYWN0b3J5ID0gY29tcG9uZW50ICJTdG9yZSDlt6Xlu6AgKHN0b3JlL2luZGV4LnRzKSIgIuW3peW7oOWHveW8jyBjcmVhdGVTdG9yZSgp44CC6K6A5Y+WIFNUT1JFX0RSSVZFUiDnkrDlooPorormlbjvvJoncG9zdGdyZXMnIOKGkiBQZ1N0b3Jl77yITmVvbu+8ie+8m+WFtuS7liDihpIgSnNvbkZpbGVTdG9yZe+8iGRhdGEvc3RvcmUuanNvbu+8ieOAguWbnuWCs+Wei+WIpeWbuuWumueCuiBTdG9yZSDku4vpnaLvvIzot6/nlLHlsaTkuI3mhJ/nn6Xlhbfpq5Tlr6bkvZzjgIIiICJUeXBlU2NyaXB0IGZhY3RvcnkgZnVuY3Rpb24iCgogICAgICAgICAgICAgICAgc3RvcmVJbnRlcmZhY2UgPSBjb21wb25lbnQgIlN0b3JlIOS7i+mdoiAoc3RvcmUvU3RvcmUudHMpIiAiVjkg57K+57Ch54mI6LOH5paZ5a2Y5Y+W5aWR57SE77yaYXV0aCDnm7jpl5zmlrnms5Xlt7Lnp7vpmaTvvIjnlLEgQmV0dGVyIEF1dGgg6LKg6LKs77yJ77yMdXNlcklkIOWFqOmdouaUueeCuiBzdHJpbmfvvIjlsI3mh4kgQmV0dGVyIEF1dGggc3RyaW5nIElE77yJ44CC5L+d55WZIG1lbnUgQ1JVROOAgW9yZGVyIENSVUQg6IiHIHN1Ym1pdE9yZGVy44CCIiAiVHlwZVNjcmlwdCBpbnRlcmZhY2UiCgogICAgICAgICAgICAgICAgcGdTdG9yZSA9IGNvbXBvbmVudCAiUGdTdG9yZSAoc3RvcmUvcGcvUGdTdG9yZS50cykiICJTdG9yZSDku4vpnaLnmoQgUG9zdGdyZVNRTCDlr6bkvZzvvIzkvb/nlKggRHJpenpsZSBPUk0gKyBOZW9uIHNlcnZlcmxlc3MgcG9vbOOAgmluaXQoKSDmqqLmn6UgREIg6YCj57ea44CB5b6eIGRhdGEvc3RvcmUuanNvbiDnqK7lhaXliJ3lp4voj5zllq7vvIjoi6UgREIg54K656m677yJ44CB5b6eIERCIOmHjeaWsOi8ieWFpeizh+aWmeiHs+iomOaGtumrlOW/q+WPluOAgiIgIlR5cGVTY3JpcHQgY2xhc3MsIERyaXp6bGUgT1JNIgoKICAgICAgICAgICAgICAgIGpzb25GaWxlU3RvcmUgPSBjb21wb25lbnQgIkpzb25GaWxlU3RvcmUgKHN0b3JlL2pzb24vSnNvbkZpbGVTdG9yZS50cykiICJTdG9yZSDku4vpnaLnmoQgSlNPTiDmqpTmoYjlgpnnlKjlr6bkvZzjgILlkKsgaW5pdCgp44CBbm9ybWFsaXplTWVudUl0ZW0vbm9ybWFsaXplVXNlci9ub3JtYWxpemVVc2VySWQg55u45a656IiK6LOH5paZ44CBdG1wK3JlbmFtZSDljp/lrZDlr6vlhaXjgIFQcm9taXNlIGNoYWluIHBlcnNpc3QgcXVldWXjgILpoJDoqK3kvb/nlKjogIXvvJpkZW1vQGV4YW1wbGUuY29tIC8gYW15QGV4YW1wbGUuY29t77yIcGFzc3dvcmQ6IDEyMzTvvInjgIIiICJUeXBlU2NyaXB0IGNsYXNzLCBCdW4gZmlsZSBBUEkiCgogICAgICAgICAgICAgICAgZGJDbGllbnQgPSBjb21wb25lbnQgIkRCIENsaWVudCAoZGIvY2xpZW50LnRzKSIgIuS7pSBAbmVvbmRhdGFiYXNlL3NlcnZlcmxlc3MgUG9vbCDlu7rnq4sgV2ViU29ja2V0IOmAo+e3mu+8jOmAj+mBjiBkcml6emxlKCkg5bu656uLIE9STSDlr6bkvovvvIzlkIzmmYIgc3ByZWFkIGJ1c2luZXNzIHNjaGVtYSDoiIcgYXV0aCBzY2hlbWHjgILllZ/li5XmmYLoi6XnhKEgREFUQUJBU0VfVVJMIOWNs+aLi+mMr+OAgiIgIkBuZW9uZGF0YWJhc2Uvc2VydmVybGVzcywgZHJpenpsZS1vcm0vbmVvbi1zZXJ2ZXJsZXNzIgoKICAgICAgICAgICAgICAgIGJpelNjaGVtYSA9IGNvbXBvbmVudCAiQnVzaW5lc3MgU2NoZW1hIChkYi9zY2hlbWEudHMpIiAiRHJpenpsZSDmpa3li5nos4fmlpnooajlrprnvqnvvIznva7mlrwgUEdfU0NIRU1B77yI6aCQ6KitIGJmX3Y577yJbmFtZXNwYWNl77yabWVudV9pdGVtc++8iOiHquWiniBQS++8ieOAgW9yZGVyc++8iHVzZXJJZCDlpJbpjbXlsI3mh4kgQmV0dGVyIEF1dGggdXNlci5pZO+8ieOAgW9yZGVyX2l0ZW1z77yI5Y+N5q2j6KaP5YyW77yM5ZCrIG5hbWUvcHJpY2UvY2F0ZWdvcnkvZGVzY3JpcHRpb24vaW1hZ2VfdXJs77yJ44CCIiAiRHJpenpsZSBPUk0sIGRyaXp6bGUtb3JtL3BnLWNvcmUiCgogICAgICAgICAgICAgICAgYXV0aFNjaGVtYSA9IGNvbXBvbmVudCAiQXV0aCBTY2hlbWEgKGRiL2F1dGgtc2NoZW1hLnRzKSIgIkJldHRlciBBdXRoIOaJgOmcgOizh+aWmeihqO+8mnVzZXIgLyBzZXNzaW9uIC8gYWNjb3VudCAvIHZlcmlmaWNhdGlvbu+8jOeUsSBiZXR0ZXJBdXRoIGRyaXp6bGVBZGFwdGVyIOiHquWLlee2reitt++8jOiIh+alreWLmSB0YWJsZXMg5ZCM6JmVIE5lb24gUG9zdGdyZVNRTCBiZl92OSBzY2hlbWHjgIIiICJiZXR0ZXItYXV0aCwgRHJpenpsZSBPUk0iCgogICAgICAgICAgICAgICAgcm91dGVTY2hlbWFzID0gY29tcG9uZW50ICJSb3V0ZSBTY2hlbWFzIChzaGFyZWQvcm91dGUtc2NoZW1hcy50cykiICJab2QtYmFzZWQgQVBJIOWxpCBzY2hlbWEg6ZuG5Lit5a6a576p77yacmVxdWVzdCBib2R5L3BhcmFtcyBzY2hlbWHvvIhjcmVhdGVNZW51SXRlbUJvZHlTY2hlbWEg562J77yJ44CBcmVzcG9uc2UgZW52ZWxvcGUgc2NoZW1h77yIbWVudUxpc3RSZXNwb25zZVNjaGVtYSDnrYnvvInjgIFPcmRlclJlc3BvbnNlIOWei+WIpeiIhyB0b09yZGVyUmVzcG9uc2UoKSDovYnmj5vlh73lvI/jgIIiICJab2QsIFR5cGVTY3JpcHQiCgogICAgICAgICAgICAgICAgc2hhcmVkQ29udHJhY3RzID0gY29tcG9uZW50ICLlhbHnlKjlnovliKXlpZHntIQgKHNoYXJlZC9jb250cmFjdHMudHMpIiAiVjkg5Y2H57Sa54K6IFpvZCBzY2hlbWEg6amF5YuV77yabWVudUl0ZW1TY2hlbWHjgIF1c2VyU2NoZW1h77yIaWQ6IHN0cmluZ++8jOWwjeaHiSBCZXR0ZXIgQXV0aO+8ieOAgXNlc3Npb25Vc2VyU2NoZW1h77yIU2Vzc2lvblVzZXIgPSB7IGlkLCBlbWFpbCwgbmFtZSB977yJ44CBb3JkZXJTY2hlbWHvvIh1c2VySWQ6IHN0cmluZ++8ieOAglR5cGVTY3JpcHQg5Z6L5Yil5YWo6YOo55SxIHouaW5mZXI8PiDoh6rli5XmjqjlsI7vvIzmtojpmaTmiYvli5Xntq3orbflhanku73lnovliKXnmoTllY/poYzjgIIiICJab2QsIFR5cGVTY3JpcHQiCgogICAgICAgICAgICAgICAgb3BlbkFwaVBsdWdpbiA9IGNvbXBvbmVudCAiT3BlbkFQSSDlpJbmjpsiICLpgI/pgY4gQGVseXNpYWpzL29wZW5hcGkg6Ly45Ye6IFN3YWdnZXIgVUnvvIhHRVQgL29wZW5hcGnvvInoiIcgSlNPTiBzcGVj77yIR0VUIC9vcGVuYXBpL2pzb27vvInjgILmjpLpmaTpnZzmhYvos4fnlKLot6/nlLHoiIcgb3BlbmFwaSDmnKzouqvot6/nlLHjgIIiICJAZWx5c2lhanMvb3BlbmFwaSIKCiAgICAgICAgICAgICAgICB1dGlsTW9kdWxlID0gY29tcG9uZW50ICLmmYLljYDlt6XlhbcgKHV0aWwudHMpIiAidG9UYWlwZWlEYXRlVGltZSgp77ya5L2/55SoIEludGwuRGF0ZVRpbWVGb3JtYXQgc3YtU0UgLyBBc2lhL1RhaXBlaSDlsIcgVVRDIElTTyBzdHJpbmcg6L2J5o+b54K65Y+w5YyX5pmC6ZaT5a2X5Liy77yIWVlZWS1NTS1ERCBISDpNTTpTUyDmoLzlvI/vvInvvIzkvpsgdG9PcmRlclJlc3BvbnNlKCkg5L2/55So44CCIiAiVHlwZVNjcmlwdCwgSW50bC5EYXRlVGltZUZvcm1hdCIKCiAgICAgICAgICAgICAgICBkcml6emxlQ29uZmlnID0gY29tcG9uZW50ICJEcml6emxlIOmBt+enu+ioreWumiAoZHJpenpsZS5jb25maWcudHMpIiAiZHJpenpsZS1raXQg6Kit5a6a5qqU44CCc2NoZW1hIOaMh+WQkSBkYi9zY2hlbWEudHMg6IiHIGRiL2F1dGgtc2NoZW1hLnRz77ybb3V0IOi8uOWHuuiHsyBkcml6emxlLyDnm67pjITvvIjlkKsgU1FMIOmBt+enu+aqlOiIhyBtZXRhLyDlv6vnhafvvInjgILkvb/nlKggREFUQUJBU0VfVVJMX01JR1JBVElPTiDmiJYgREFUQUJBU0VfVVJMIOS9nOeCuumBt+enu+mAo+e3muWtl+S4suOAgiIgImRyaXp6bGUta2l0LCBQb3N0Z3JlU1FMIgogICAgICAgICAgICB9CgogICAgICAgICAgICAjIOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgOKUgAogICAgICAgICAgICAjIENvbnRhaW5lciAzOiBKU09OIOaqlOahiOizh+aWmeW6q++8iOmWi+eZvC/lgpnnlKjvvIkKICAgICAgICAgICAgIyDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIDilIAKCiAgICAgICAgICAgIGZpbGVTdG9yZSA9IGNvbnRhaW5lciAiSlNPTiDmqpTmoYjos4fmlpnluqsiICJkYXRhL3N0b3JlLmpzb27jgILnlbYgU1RPUkVfRFJJVkVSICE9IHBvc3RncmVzIOaZgueUsSBKc29uRmlsZVN0b3JlIOS9v+eUqOOAguWEsuWtmCB1c2Vyc++8iHN0cmluZyBJRCDpm7bloavoo5zvvIzlpoIgJzAwMDEn77yJ44CBbWVude+8iDEyIOmgheWQq+WclueJh+iIh+aPj+i/sO+8ieOAgW9yZGVyc++8iHVzZXJJZDogc3RyaW5n77yJ44CB5LiJ5YCL6Ieq5aKe6KiI5pW45Zmo44CCIiAiZGF0YS9zdG9yZS5qc29uLCBCdW4gZmlsZSBBUEkgKGxvY2FsIGZpbGVzeXN0ZW0pIiB7CiAgICAgICAgICAgICAgICB0YWdzICJEYXRhYmFzZSIKICAgICAgICAgICAgfQogICAgICAgIH0KCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKICAgICAgICAjIFJlbGF0aW9uc2hpcHMg4oCUIFN5c3RlbSBDb250ZXh0IGxldmVsCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKCiAgICAgICAgY3VzdG9tZXIgLT4gc3BhICLngI/opr3oj5zllq7jgIHku6UgR29vZ2xlIOW4s+iZn+eZu+WFpeOAgeW7uueri+S4pumAgeWHuuioguWWriIgIkhUVFBTIC8gQnJvd3NlciIKICAgICAgICBzcGEgLT4gYXBpU2VydmVyICLlkbzlj6sgUkVTVCBBUEnvvIjlkKsgY3JlZGVudGlhbHM6aW5jbHVkZe+8iSIgIkhUVFAvSlNPTiIKICAgICAgICBhcGlTZXJ2ZXIgLT4gZ29vZ2xlT0F1dGggIk9BdXRoIDIuMCDnmbvlhaXmtYHnqIvvvIhhdXRob3JpemUgLyBjYWxsYmFja++8iSIgIkhUVFBTLCBCZXR0ZXIgQXV0aCIKICAgICAgICBhcGlTZXJ2ZXIgLT4gbmVvbkNsb3VkICLoroDlr6sgQmV0dGVyIEF1dGggc2Vzc2lvbiDoiIfmpa3li5nos4fmlpkiICJUQ1AvV1NTLCBEcml6emxlICsgQG5lb25kYXRhYmFzZS9zZXJ2ZXJsZXNzIgoKICAgICAgICAjIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkAogICAgICAgICMgUmVsYXRpb25zaGlwcyDigJQgQ29tcG9uZW50IGxldmVsCiAgICAgICAgIyDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZAKCiAgICAgICAgIyDot6/nlLHlsaQg4oaSIOWQhOaooee1hAogICAgICAgIHJvdXRlTGF5ZXIgLT4gYmV0dGVyQXV0aE1vZHVsZSAiYXV0aC5oYW5kbGVyIOS7o+eQhiAvYXBpL2F1dGgvKiDoq4vmsYLvvJtyZXF1aXJlVXNlcigpIOWPluW+lyBzZXNzaW9uIgogICAgICAgIHJvdXRlTGF5ZXIgLT4gc3RvcmVGYWN0b3J5ICJjcmVhdGVTdG9yZSh7IGRhdGFGaWxlUGF0aCB9KSDlj5blvpcgc3RvcmUg5a+m5L6LIgogICAgICAgIHJvdXRlTGF5ZXIgLT4gcm91dGVTY2hlbWFzICJpbXBvcnQg5omA5pyJIFpvZCByZXF1ZXN0L3Jlc3BvbnNlIHNjaGVtYXMg6IiHIHRvT3JkZXJSZXNwb25zZSgpIgogICAgICAgIHJvdXRlTGF5ZXIgLT4gb3BlbkFwaVBsdWdpbiAiYXBwLnVzZShvcGVuYXBpKC4uLikpIOaOm+i8ieWkluaOmyIKICAgICAgICByb3V0ZUxheWVyIC0+IHV0aWxNb2R1bGUgImltcG9ydCB0b1RhaXBlaURhdGVUaW1l77yI6IiKIHY3IOi3r+eUseS7jeebtOaOpeS9v+eUqO+8iSIKCiAgICAgICAgIyBCZXR0ZXIgQXV0aCDmqKHntYQKICAgICAgICBiZXR0ZXJBdXRoTW9kdWxlIC0+IGRiQ2xpZW50ICJkcml6emxlQWRhcHRlcihkYikg6YCj5o6l6LOH5paZ5bqrIgogICAgICAgIGJldHRlckF1dGhNb2R1bGUgLT4gYXV0aFNjaGVtYSAi6K6A5a+rIHVzZXIvc2Vzc2lvbi9hY2NvdW50L3ZlcmlmaWNhdGlvbiDos4fmlpnooagiCiAgICAgICAgYmV0dGVyQXV0aE1vZHVsZSAtPiB1c2VyTWFwcGVyICJ0b1Nlc3Npb25Vc2VyKCkg6L2J5o+bIERCIHVzZXIg4oaSIFNlc3Npb25Vc2VyIgogICAgICAgIGJldHRlckF1dGhNb2R1bGUgLT4gZ29vZ2xlT0F1dGggIk9BdXRoIDIuMCBhdXRob3JpemUgJiBjYWxsYmFjayIgIkhUVFBTIgoKICAgICAgICAjIFN0b3JlIOW3peW7oCDihpIg5a+m5L2cCiAgICAgICAgc3RvcmVGYWN0b3J5IC0+IHBnU3RvcmUgIlNUT1JFX0RSSVZFUj1wb3N0Z3JlcyDmmYLlu7rnq4sgUGdTdG9yZSDlr6bkvosiCiAgICAgICAgc3RvcmVGYWN0b3J5IC0+IGpzb25GaWxlU3RvcmUgIuWFtuS7luaDheazgeW7uueriyBKc29uRmlsZVN0b3JlIOWvpuS+iyIKICAgICAgICBwZ1N0b3JlIC0+IHN0b3JlSW50ZXJmYWNlICJpbXBsZW1lbnRzIFN0b3JlIOS7i+mdoiIKICAgICAgICBqc29uRmlsZVN0b3JlIC0+IHN0b3JlSW50ZXJmYWNlICJpbXBsZW1lbnRzIFN0b3JlIOS7i+mdoiIKCiAgICAgICAgIyBQZ1N0b3JlIOKGkiBEQgogICAgICAgIHBnU3RvcmUgLT4gZGJDbGllbnQgIumAj+mBjiBEcml6emxlIE9STSDln7fooYwgU1FMIgogICAgICAgIGRiQ2xpZW50IC0+IGJpelNjaGVtYSAibWVudV9pdGVtcyAvIG9yZGVycyAvIG9yZGVyX2l0ZW1zIOizh+aWmeihqOaTjeS9nCIKICAgICAgICBkYkNsaWVudCAtPiBuZW9uQ2xvdWQgIldlYlNvY2tldCDpgKPnt5roh7MgTmVvbiBzZXJ2ZXJsZXNzIHBvb2wiICJXU1MiCgogICAgICAgICMgSnNvbkZpbGVTdG9yZSDihpIg5pys5Zyw5qqU5qGICiAgICAgICAganNvbkZpbGVTdG9yZSAtPiBmaWxlU3RvcmUgIuiugOWvqyBkYXRhL3N0b3JlLmpzb27vvIh0bXArcmVuYW1lIOWOn+WtkOWvq+WFpe+8iSIgIkJ1biBmaWxlIEFQSSIKCiAgICAgICAgIyBSb3V0ZSBTY2hlbWFzIOKGkiBTaGFyZWQgQ29udHJhY3RzCiAgICAgICAgcm91dGVTY2hlbWFzIC0+IHNoYXJlZENvbnRyYWN0cyAiaW1wb3J0IG1lbnVJdGVtU2NoZW1hLCBvcmRlclNjaGVtYe+8iOikh+eUqOalreWLmSBzY2hlbWHvvIkiCiAgICAgICAgcm91dGVTY2hlbWFzIC0+IHV0aWxNb2R1bGUgImltcG9ydCB0b1RhaXBlaURhdGVUaW1lIOS+myB0b09yZGVyUmVzcG9uc2UoKSDkvb/nlKgiCiAgICAgICAgZHJpenpsZUNvbmZpZyAtPiBiaXpTY2hlbWEgIuiugOWPliBkYi9zY2hlbWEudHMg55Si55Sf6YG356e7IFNRTCIKICAgICAgICBkcml6emxlQ29uZmlnIC0+IGF1dGhTY2hlbWEgIuiugOWPliBkYi9hdXRoLXNjaGVtYS50cyDnlKLnlJ/pgbfnp7sgU1FMIgogICAgICAgIGRyaXp6bGVDb25maWcgLT4gbmVvbkNsb3VkICLln7fooYwgZHJpenpsZS1raXQgcHVzaC9taWdyYXRlIOaZgumAo+e3muiHsyBOZW9uIiAiSFRUUFMiCiAgICAgICAgc3BhIC0+IHNoYXJlZENvbnRyYWN0cyAiaW1wb3J0IHR5cGUgTWVudUl0ZW0sIE9yZGVyLCBTZXNzaW9uVXNlcu+8iGNvbXBpbGUtdGltZe+8iSIgIlR5cGVTY3JpcHQiCgogICAgICAgICMgU2NoZW1hIOmXnOiBrwogICAgICAgIGJpelNjaGVtYSAtPiBhdXRoU2NoZW1hICJvcmRlcnNUYWJsZS51c2VySWQg4oaSIEJldHRlciBBdXRoIHVzZXIuaWQg5aSW6Y21IgogICAgfQoKICAgICMg4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQCiAgICAjIFZpZXdzCiAgICAjIOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkOKVkAoKICAgIHZpZXdzIHsKCiAgICAgICAgc3lzdGVtQ29udGV4dCBicmVha2Zhc3RTeXN0ZW0gIlN5c3RlbUNvbnRleHQiICLml6nppJDlupfpu57ppJDns7vntbEg4oCUIFN5c3RlbSBDb250ZXh077yIQzQgTGV2ZWwgMe+8iSIgewogICAgICAgICAgICBpbmNsdWRlICoKICAgICAgICAgICAgYXV0b0xheW91dCB0YgogICAgICAgIH0KCiAgICAgICAgY29udGFpbmVyIGJyZWFrZmFzdFN5c3RlbSAiQ29udGFpbmVyVmlldyIgIuaXqemkkOW6l+m7numkkOezu+e1sSDigJQgQ29udGFpbmVyIFZpZXfvvIhDNCBMZXZlbCAy77yJIiB7CiAgICAgICAgICAgIGluY2x1ZGUgKgogICAgICAgICAgICBhdXRvTGF5b3V0IGxyCiAgICAgICAgfQoKICAgICAgICBjb21wb25lbnQgYXBpU2VydmVyICJCYWNrZW5kQ29tcG9uZW50cyIgIuW+jOerryBBUEkg5Ly65pyN5ZmoIOKAlCBDb21wb25lbnQgVmlld++8iEM0IExldmVsIDPvvIkiIHsKICAgICAgICAgICAgaW5jbHVkZSAqCiAgICAgICAgICAgIGF1dG9MYXlvdXQgbHIKICAgICAgICB9CgogICAgICAgIHN0eWxlcyB7CiAgICAgICAgICAgIGVsZW1lbnQgIlBlcnNvbiIgewogICAgICAgICAgICAgICAgc2hhcGUgUGVyc29uCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICMwODQyN0IKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJTb2Z0d2FyZSBTeXN0ZW0iIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzExNjhCRAogICAgICAgICAgICAgICAgY29sb3IgI2ZmZmZmZgogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgIkV4dGVybmFsIiB7CiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM5OTk5OTkKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJDb250YWluZXIiIHsKICAgICAgICAgICAgICAgIGJhY2tncm91bmQgIzQzOERENQogICAgICAgICAgICAgICAgY29sb3IgI2ZmZmZmZgogICAgICAgICAgICB9CiAgICAgICAgICAgIGVsZW1lbnQgIkNvbXBvbmVudCIgewogICAgICAgICAgICAgICAgYmFja2dyb3VuZCAjODVCQkYwCiAgICAgICAgICAgICAgICBjb2xvciAjMDAwMDAwCiAgICAgICAgICAgIH0KICAgICAgICAgICAgZWxlbWVudCAiRGF0YWJhc2UiIHsKICAgICAgICAgICAgICAgIHNoYXBlIEN5bGluZGVyCiAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kICM0MzhERDUKICAgICAgICAgICAgICAgIGNvbG9yICNmZmZmZmYKICAgICAgICAgICAgfQogICAgICAgICAgICBlbGVtZW50ICJCcm93c2VyIiB7CiAgICAgICAgICAgICAgICBzaGFwZSBXZWJCcm93c2VyCiAgICAgICAgICAgIH0KICAgICAgICB9CiAgICB9Cn0=",
+    "structurizr.inspection.info": "0",
+    "structurizr.inspection.ignore": "0",
+    "structurizr.inspection.warning": "0"
   },
-  "views" : {
-    "componentViews" : [ {
-      "automaticLayout" : {
-        "edgeSeparation" : 50,
-        "nodeSeparation" : 50,
-        "rankDirection" : "LeftRight",
-        "rankSeparation" : 100,
-        "vertices" : true
+  "views": {
+    "componentViews": [
+      {
+        "automaticLayout": {
+          "edgeSeparation": 50,
+          "nodeSeparation": 50,
+          "rankDirection": "LeftRight",
+          "rankSeparation": 100,
+          "vertices": true
+        },
+        "containerId": "6",
+        "description": "後端 API 伺服器 — Component View（C4 Level 3）",
+        "elements": [
+          {
+            "id": "2",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "3",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "5",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "7",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "8",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "9",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "10",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "11",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "12",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "13",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "14",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "15",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "16",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "17",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "18",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "19",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "20",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "21",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "22",
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "externalContainerBoundariesVisible": false,
+        "key": "BackendComponents",
+        "name": "Component View: 早餐店點餐系統 - 後端 API 伺服器",
+        "order": 3,
+        "relationships": [
+          {
+            "id": "30"
+          },
+          {
+            "id": "31"
+          },
+          {
+            "id": "32"
+          },
+          {
+            "id": "33"
+          },
+          {
+            "id": "34"
+          },
+          {
+            "id": "35"
+          },
+          {
+            "id": "36"
+          },
+          {
+            "id": "37"
+          },
+          {
+            "id": "38"
+          },
+          {
+            "id": "39"
+          },
+          {
+            "id": "40"
+          },
+          {
+            "id": "41"
+          },
+          {
+            "id": "42"
+          },
+          {
+            "id": "43"
+          },
+          {
+            "id": "44"
+          },
+          {
+            "id": "45"
+          },
+          {
+            "id": "46"
+          },
+          {
+            "id": "48"
+          },
+          {
+            "id": "49"
+          },
+          {
+            "id": "50"
+          },
+          {
+            "id": "51"
+          },
+          {
+            "id": "52"
+          },
+          {
+            "id": "53"
+          },
+          {
+            "id": "54"
+          },
+          {
+            "id": "55"
+          }
+        ]
+      }
+    ],
+    "configuration": {
+      "styles": {
+        "elements": [
+          {
+            "shape": "WebBrowser",
+            "tag": "Browser"
+          },
+          {
+            "background": "#85bbf0",
+            "color": "#000000",
+            "tag": "Component"
+          },
+          {
+            "background": "#438dd5",
+            "color": "#ffffff",
+            "tag": "Container"
+          },
+          {
+            "background": "#438dd5",
+            "color": "#ffffff",
+            "shape": "Cylinder",
+            "tag": "Database"
+          },
+          {
+            "background": "#999999",
+            "color": "#ffffff",
+            "tag": "External"
+          },
+          {
+            "background": "#08427b",
+            "color": "#ffffff",
+            "shape": "Person",
+            "tag": "Person"
+          },
+          {
+            "background": "#1168bd",
+            "color": "#ffffff",
+            "tag": "Software System"
+          }
+        ]
       },
-      "containerId" : "6",
-      "description" : "後端 API 伺服器 — Component View（C4 Level 3）",
-      "elements" : [ {
-        "id" : "2",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "3",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "5",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "7",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "8",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "9",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "10",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "11",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "12",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "13",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "14",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "15",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "16",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "17",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "18",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "19",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "20",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "21",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "22",
-        "x" : 0,
-        "y" : 0
-      } ],
-      "externalContainerBoundariesVisible" : false,
-      "key" : "BackendComponents",
-      "name" : "Component View: 早餐店點餐系統 - 後端 API 伺服器",
-      "order" : 3,
-      "relationships" : [ {
-        "id" : "30"
-      }, {
-        "id" : "31"
-      }, {
-        "id" : "32"
-      }, {
-        "id" : "33"
-      }, {
-        "id" : "34"
-      }, {
-        "id" : "35"
-      }, {
-        "id" : "36"
-      }, {
-        "id" : "37"
-      }, {
-        "id" : "38"
-      }, {
-        "id" : "39"
-      }, {
-        "id" : "40"
-      }, {
-        "id" : "41"
-      }, {
-        "id" : "42"
-      }, {
-        "id" : "43"
-      }, {
-        "id" : "44"
-      }, {
-        "id" : "45"
-      }, {
-        "id" : "46"
-      }, {
-        "id" : "48"
-      }, {
-        "id" : "49"
-      }, {
-        "id" : "50"
-      }, {
-        "id" : "51"
-      }, {
-        "id" : "52"
-      }, {
-        "id" : "53"
-      }, {
-        "id" : "54"
-      } ]
-    } ],
-    "configuration" : {
-      "styles" : {
-        "elements" : [ {
-          "shape" : "WebBrowser",
-          "tag" : "Browser"
-        }, {
-          "background" : "#85bbf0",
-          "color" : "#000000",
-          "tag" : "Component"
-        }, {
-          "background" : "#438dd5",
-          "color" : "#ffffff",
-          "tag" : "Container"
-        }, {
-          "background" : "#438dd5",
-          "color" : "#ffffff",
-          "shape" : "Cylinder",
-          "tag" : "Database"
-        }, {
-          "background" : "#999999",
-          "color" : "#ffffff",
-          "tag" : "External"
-        }, {
-          "background" : "#08427b",
-          "color" : "#ffffff",
-          "shape" : "Person",
-          "tag" : "Person"
-        }, {
-          "background" : "#1168bd",
-          "color" : "#ffffff",
-          "tag" : "Software System"
-        } ]
-      },
-      "terminology" : { }
+      "terminology": {}
     },
-    "containerViews" : [ {
-      "automaticLayout" : {
-        "edgeSeparation" : 50,
-        "nodeSeparation" : 50,
-        "rankDirection" : "LeftRight",
-        "rankSeparation" : 100,
-        "vertices" : true
-      },
-      "description" : "早餐店點餐系統 — Container View（C4 Level 2）",
-      "elements" : [ {
-        "id" : "1",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "2",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "3",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "5",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "6",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "22",
-        "x" : 0,
-        "y" : 0
-      } ],
-      "externalSoftwareSystemBoundariesVisible" : false,
-      "key" : "ContainerView",
-      "name" : "Container View: 早餐店點餐系統",
-      "order" : 2,
-      "relationships" : [ {
-        "id" : "23"
-      }, {
-        "id" : "25"
-      }, {
-        "id" : "26"
-      }, {
-        "id" : "28"
-      }, {
-        "id" : "47"
-      } ],
-      "softwareSystemId" : "4"
-    } ],
-    "systemContextViews" : [ {
-      "automaticLayout" : {
-        "edgeSeparation" : 50,
-        "nodeSeparation" : 50,
-        "rankDirection" : "TopBottom",
-        "rankSeparation" : 100,
-        "vertices" : true
-      },
-      "description" : "早餐店點餐系統 — System Context（C4 Level 1）",
-      "elements" : [ {
-        "id" : "1",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "2",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "3",
-        "x" : 0,
-        "y" : 0
-      }, {
-        "id" : "4",
-        "x" : 0,
-        "y" : 0
-      } ],
-      "enterpriseBoundaryVisible" : true,
-      "key" : "SystemContext",
-      "name" : "System Context View: 早餐店點餐系統",
-      "order" : 1,
-      "relationships" : [ {
-        "id" : "24"
-      }, {
-        "id" : "27"
-      }, {
-        "id" : "29"
-      } ],
-      "softwareSystemId" : "4"
-    } ]
+    "containerViews": [
+      {
+        "automaticLayout": {
+          "edgeSeparation": 50,
+          "nodeSeparation": 50,
+          "rankDirection": "LeftRight",
+          "rankSeparation": 100,
+          "vertices": true
+        },
+        "description": "早餐店點餐系統 — Container View（C4 Level 2）",
+        "elements": [
+          {
+            "id": "1",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "2",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "3",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "5",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "6",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "22",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "56",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "57",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "58",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "59",
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "externalSoftwareSystemBoundariesVisible": false,
+        "key": "ContainerView",
+        "name": "Container View: 早餐店點餐系統",
+        "order": 2,
+        "relationships": [
+          {
+            "id": "23"
+          },
+          {
+            "id": "25"
+          },
+          {
+            "id": "26"
+          },
+          {
+            "id": "28"
+          },
+          {
+            "id": "47"
+          },
+          {
+            "id": "60"
+          },
+          {
+            "id": "62"
+          },
+          {
+            "id": "64"
+          },
+          {
+            "id": "66"
+          }
+        ],
+        "softwareSystemId": "4"
+      }
+    ],
+    "systemContextViews": [
+      {
+        "automaticLayout": {
+          "edgeSeparation": 50,
+          "nodeSeparation": 50,
+          "rankDirection": "TopBottom",
+          "rankSeparation": 100,
+          "vertices": true
+        },
+        "description": "早餐店點餐系統 — System Context（C4 Level 1）",
+        "elements": [
+          {
+            "id": "1",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "2",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "3",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "4",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "56",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "57",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "58",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "59",
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "enterpriseBoundaryVisible": true,
+        "key": "SystemContext",
+        "name": "System Context View: 早餐店點餐系統",
+        "order": 1,
+        "relationships": [
+          {
+            "id": "24"
+          },
+          {
+            "id": "27"
+          },
+          {
+            "id": "29"
+          },
+          {
+            "id": "61"
+          },
+          {
+            "id": "63"
+          },
+          {
+            "id": "65"
+          },
+          {
+            "id": "67"
+          }
+        ],
+        "softwareSystemId": "4"
+      }
+    ]
   }
 }
