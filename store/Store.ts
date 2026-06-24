@@ -1,4 +1,8 @@
-import type { MenuItem, Order } from "../shared/contracts.ts";
+import type {
+  MenuItem,
+  MenuItemVersionHistory,
+  Order,
+} from "../shared/contracts.ts";
 
 export type UpdateOrderItemErrorCode =
   | "ORDER_NOT_FOUND"
@@ -10,7 +14,8 @@ export type SubmitOrderErrorCode =
   | "ORDER_NOT_FOUND"
   | "ORDER_NOT_OWNED"
   | "ORDER_NOT_EDITABLE"
-  | "EMPTY_ORDER";
+  | "EMPTY_ORDER"
+  | "OUTDATED_ITEMS";
 
 export interface Store {
   init(): Promise<void>;
@@ -22,6 +27,7 @@ export interface Store {
     category: string;
     description: string;
     image_url: string;
+    createdBy: string;
   }): Promise<MenuItem>;
   updateMenuItem(
     menuId: number,
@@ -31,9 +37,12 @@ export interface Store {
       category?: string;
       description?: string;
       image_url?: string;
+      reason: string;
+      createdBy: string;
     },
   ): Promise<MenuItem | null>;
   deleteMenuItem(menuId: number): Promise<MenuItem | null>;
+  getMenuItemVersions(logicalId: number): Promise<MenuItemVersionHistory[]>;
 
   getOrders(): ReadonlyArray<Order>;
   getCurrentOrderByUserId(userId: string): Order | undefined;
@@ -44,7 +53,7 @@ export interface Store {
     orderId: number,
     input: {
       userId: string;
-      itemId: number;
+      logicalId: number;
       qty: number;
     },
   ): Promise<
@@ -54,6 +63,11 @@ export interface Store {
     orderId: number,
     input: { userId: string },
   ): Promise<
-    { ok: true; order: Order } | { ok: false; code: SubmitOrderErrorCode }
+    | { ok: true; order: Order }
+    | {
+        ok: false;
+        code: SubmitOrderErrorCode;
+        outdatedItems?: Array<{ logicalId: number; name: string }>;
+      }
   >;
 }

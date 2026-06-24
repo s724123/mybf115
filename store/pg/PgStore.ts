@@ -1,5 +1,10 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
-import type { MenuItem, Order, OrderItem } from "../../shared/contracts.ts";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import type {
+  MenuItem,
+  MenuItemVersionHistory,
+  Order,
+  OrderItem,
+} from "../../shared/contracts.ts";
 import { db } from "../../db/client.ts";
 import {
   menuItemsTable,
@@ -13,22 +18,116 @@ interface PgStoreOptions {
 }
 
 // Seed 用的內部型別（來自 data/store.json）
-// V9: 只播 menu，users 由 Better Auth 管理，orders 需真實 session 才能建立
 interface SeedData {
-  menu?: MenuItem[];
-  orders?: Array<{
+  menu?: Array<{
     id: number;
-    userId: string | number;
-    status: "pending" | "submitted";
-    total: number;
-    createdAt: string;
-    submittedAt?: string;
-    items: Array<{ item: MenuItem; qty: number }>;
+    name: string;
+    price: number;
+    category: string;
+    description: string;
+    image_url: string;
   }>;
 }
 
 function calculateTotal(items: ReadonlyArray<OrderItem>): number {
-  return items.reduce((sum, oi) => sum + oi.item.price * oi.qty, 0);
+  return items.reduce((sum, oi) => sum + oi.menuItemPrice * oi.qty, 0);
+}
+
+/**
+ * 將 DB order_items + menu_items JOIN 結果轉換為 OrderItem
+ */
+function toOrderItem(
+  oi: { id: number; orderId: number; menuItemId: number; qty: number },
+  mi: {
+    id: number;
+    name: string;
+    price: number;
+    category: string;
+    description: string;
+    imageUrl: string;
+    version: number;
+  },
+): OrderItem {
+  return {
+    menuItemId: mi.id,
+    menuItemName: mi.name,
+    menuItemPrice: mi.price,
+    menuItemCategory: mi.category,
+    menuItemDescription: mi.description,
+    menuItemImageUrl: mi.imageUrl,
+    menuItemVersion: mi.version,
+    qty: oi.qty,
+  };
+}
+
+/**
+ * 將 DB orders row + items 轉換為 Order
+ */
+function toOrder(
+  row: {
+    id: number;
+    userId: string;
+    total: number;
+    status: string;
+    createdAt: Date;
+    submittedAt: Date | null;
+  },
+  items: OrderItem[],
+): Order {
+  return {
+    id: row.id,
+    userId: row.userId,
+    items,
+    total: row.total,
+    status: row.status === "submitted" ? "submitted" : "pending",
+    createdAt:
+      row.createdAt instanceof Date
+        ? row.createdAt.toISOString()
+        : new Date(row.createdAt).toISOString(),
+    submittedAt: row.submittedAt
+      ? row.submittedAt instanceof Date
+        ? row.submittedAt.toISOString()
+        : new Date(row.submittedAt).toISOString()
+      : undefined,
+  };
+}
+
+/**
+ * 將 DB menu_items row 轉換為 MenuItem
+ */
+function toMenuItem(row: {
+  id: number;
+  entityId: string;
+  logicalId: number;
+  version: number;
+  name: string;
+  price: number;
+  category: string;
+  description: string;
+  imageUrl: string;
+  isCurrentVersion: boolean;
+  changeReason: string | null;
+  createdBy: string;
+  createdAt: Date;
+}): MenuItem {
+  return {
+    id: row.id,
+    entityId: row.entityId,
+    logicalId: row.logicalId,
+    version: row.version,
+    name: row.name,
+    price: row.price,
+    category: row.category,
+    description: row.description,
+    image_url: row.imageUrl,
+    isCurrentVersion: row.isCurrentVersion,
+    changeReason: row.changeReason ?? undefined,
+    createdBy: row.createdBy,
+    createdAt:
+      row.createdAt instanceof Date
+        ? row.createdAt.toISOString()
+        : new Date(row.createdAt).toISOString(),
+  };
 }
 
 export class PgStore implements Store {
@@ -52,35 +151,70 @@ export class PgStore implements Store {
     return this.menu;
   }
 
+  async getMenuItemVersions(
+    logicalId: number,
+  ): Promise<MenuItemVersionHistory[]> {
+    const rows = await db
+      .select()
+      .from(menuItemsTable)
+      .where(eq(menuItemsTable.logicalId, logicalId))
+      .orderBy(desc(menuItemsTable.version));
+
+    return rows.map((row) => ({
+      version: row.version,
+      id: row.id,
+      name: row.name,
+      price: row.price,
+      category: row.category,
+      description: row.description,
+      image_url: row.imageUrl,
+      changeReason: row.changeReason ?? undefined,
+      createdBy: row.createdBy,
+      createdAt:
+        row.createdAt instanceof Date
+          ? row.createdAt.toISOString()
+          : new Date(row.createdAt).toISOString(),
+    }));
+  }
+
   async createMenuItem(input: {
     name: string;
     price: number;
     category: string;
     description: string;
     image_url: string;
+    createdBy: string;
   }): Promise<MenuItem> {
+    // 取得下一個 logicalId
+    const [maxRow] = await db
+      .select({ max: sql<number>`COALESCE(MAX(logical_id), 0)` })
+      .from(menuItemsTable);
+    const logicalId = (maxRow?.max ?? 0) + 1;
+
+    const entityId = crypto.randomUUID();
+    const now = new Date();
+
     const [inserted] = await db
       .insert(menuItemsTable)
       .values({
+        entityId,
+        logicalId,
+        version: 1,
         name: input.name,
         price: input.price,
         category: input.category,
         description: input.description,
         imageUrl: input.image_url,
+        isCurrentVersion: true,
+        changeReason: null,
+        createdBy: input.createdBy,
+        createdAt: now,
       })
       .returning();
 
     if (!inserted) throw new Error("Failed to insert menu item");
 
-    const created: MenuItem = {
-      id: inserted.id,
-      name: inserted.name,
-      price: inserted.price,
-      category: inserted.category,
-      description: inserted.description,
-      image_url: inserted.imageUrl,
-    };
-
+    const created = toMenuItem(inserted);
     this.menu.push(created);
     return created;
   }
@@ -93,58 +227,78 @@ export class PgStore implements Store {
       category?: string;
       description?: string;
       image_url?: string;
+      reason: string;
+      createdBy: string;
     },
   ): Promise<MenuItem | null> {
-    const [updated] = await db
+    // 找到當前版本
+    const [current] = await db
+      .select()
+      .from(menuItemsTable)
+      .where(
+        and(
+          eq(menuItemsTable.logicalId, menuId),
+          eq(menuItemsTable.isCurrentVersion, true),
+        ),
+      )
+      .limit(1);
+
+    if (!current) return null;
+
+    // 標記當前版本為非當前
+    await db
       .update(menuItemsTable)
-      .set({
-        ...(patch.name !== undefined ? { name: patch.name } : {}),
-        ...(patch.price !== undefined ? { price: patch.price } : {}),
-        ...(patch.category !== undefined ? { category: patch.category } : {}),
-        ...(patch.description !== undefined
-          ? { description: patch.description }
-          : {}),
-        ...(patch.image_url !== undefined ? { imageUrl: patch.image_url } : {}),
+      .set({ isCurrentVersion: false })
+      .where(eq(menuItemsTable.id, current.id));
+
+    // 插入新版本
+    const now = new Date();
+    const [inserted] = await db
+      .insert(menuItemsTable)
+      .values({
+        entityId: current.entityId,
+        logicalId: current.logicalId,
+        version: current.version + 1,
+        name: patch.name ?? current.name,
+        price: patch.price ?? current.price,
+        category: patch.category ?? current.category,
+        description: patch.description ?? current.description,
+        imageUrl: patch.image_url ?? current.imageUrl,
+        isCurrentVersion: true,
+        supersedes: current.id,
+        changeReason: patch.reason,
+        createdBy: patch.createdBy,
+        createdAt: now,
       })
-      .where(eq(menuItemsTable.id, menuId))
       .returning();
 
-    if (!updated) return null;
+    if (!inserted) throw new Error("Failed to insert menu item version");
 
-    const next: MenuItem = {
-      id: updated.id,
-      name: updated.name,
-      price: updated.price,
-      category: updated.category,
-      description: updated.description,
-      image_url: updated.imageUrl,
-    };
+    const created = toMenuItem(inserted);
 
-    const idx = this.menu.findIndex((item) => item.id === menuId);
-    if (idx !== -1) this.menu[idx] = next;
+    // 更新記憶體中的 menu
+    const idx = this.menu.findIndex((item) => item.logicalId === menuId);
+    if (idx !== -1) {
+      this.menu[idx] = created;
+    } else {
+      this.menu.push(created);
+    }
 
-    return next;
+    return created;
   }
 
   async deleteMenuItem(menuId: number): Promise<MenuItem | null> {
+    // 刪除所有版本（FK 約束會阻止有關聯訂單的項目被刪除）
     const [removed] = await db
       .delete(menuItemsTable)
-      .where(eq(menuItemsTable.id, menuId))
+      .where(eq(menuItemsTable.logicalId, menuId))
       .returning();
 
     if (!removed) return null;
 
-    const removedItem: MenuItem = {
-      id: removed.id,
-      name: removed.name,
-      price: removed.price,
-      category: removed.category,
-      description: removed.description,
-      image_url: removed.imageUrl,
-    };
+    const removedItem = toMenuItem(removed);
 
-    const idx = this.menu.findIndex((item) => item.id === menuId);
-    if (idx !== -1) this.menu.splice(idx, 1);
+    this.menu = this.menu.filter((item) => item.logicalId !== menuId);
 
     return removedItem;
   }
@@ -162,7 +316,6 @@ export class PgStore implements Store {
 
     if (pendingOrders.length === 0) return undefined;
 
-    // 取最新 pending（id 越大越新），避免使用到舊的空購物車訂單。
     return pendingOrders.reduce((latest, current) =>
       current.id > latest.id ? current : latest,
     );
@@ -193,25 +346,14 @@ export class PgStore implements Store {
 
     if (!inserted) throw new Error("Failed to create order");
 
-    const order: Order = {
-      id: inserted.id,
-      userId: input.userId,
-      items: [],
-      total: inserted.total,
-      status: "pending",
-      createdAt:
-        inserted.createdAt instanceof Date
-          ? inserted.createdAt.toISOString()
-          : new Date(inserted.createdAt).toISOString(),
-    };
-
+    const order = toOrder(inserted, []);
     this.orders.push(order);
     return order;
   }
 
   async updateOrderItem(
     orderId: number,
-    input: { userId: string; itemId: number; qty: number },
+    input: { userId: string; logicalId: number; qty: number },
   ): Promise<
     | { ok: true; order: Order }
     | {
@@ -230,69 +372,68 @@ export class PgStore implements Store {
     if (order.status !== "pending")
       return { ok: false, code: "ORDER_NOT_EDITABLE" };
 
-    const menuItem = this.menu.find((item) => item.id === input.itemId);
-    if (!menuItem) return { ok: false, code: "MENU_ITEM_NOT_FOUND" };
+    // 由 logicalId 找到當前版本
+    const [currentVersion] = await db
+      .select()
+      .from(menuItemsTable)
+      .where(
+        and(
+          eq(menuItemsTable.logicalId, input.logicalId),
+          eq(menuItemsTable.isCurrentVersion, true),
+        ),
+      )
+      .limit(1);
 
-    const existingIdx = order.items.findIndex(
-      (oi) => oi.item.id === input.itemId,
-    );
+    if (!currentVersion) return { ok: false, code: "MENU_ITEM_NOT_FOUND" };
 
-    if (existingIdx !== -1) {
+    // 查詢此訂單中是否有相同 logicalId 的項目（可能指向舊版本）
+    const [existingRow] = await db
+      .select({ id: orderItemsTable.id, qty: orderItemsTable.qty })
+      .from(orderItemsTable)
+      .innerJoin(
+        menuItemsTable,
+        eq(orderItemsTable.menuItemId, menuItemsTable.id),
+      )
+      .where(
+        and(
+          eq(orderItemsTable.orderId, orderId),
+          eq(menuItemsTable.logicalId, input.logicalId),
+        ),
+      )
+      .limit(1);
+
+    if (existingRow) {
       if (input.qty === 0) {
         await db
           .delete(orderItemsTable)
-          .where(
-            and(
-              eq(orderItemsTable.orderId, orderId),
-              eq(orderItemsTable.itemId, input.itemId),
-            ),
-          );
-        order.items.splice(existingIdx, 1);
+          .where(eq(orderItemsTable.id, existingRow.id));
       } else {
-        // 更新數量時，同時刷新菜單資訊快照（確保反映當前菜單狀態）
+        // 更新數量並指向最新版本
         await db
           .update(orderItemsTable)
           .set({
             qty: input.qty,
-            name: menuItem.name,
-            price: menuItem.price,
-            category: menuItem.category,
-            description: menuItem.description,
-            imageUrl: menuItem.image_url,
+            menuItemId: currentVersion.id,
           })
-          .where(
-            and(
-              eq(orderItemsTable.orderId, orderId),
-              eq(orderItemsTable.itemId, input.itemId),
-            ),
-          );
-        const target = order.items[existingIdx];
-        if (target) {
-          target.qty = input.qty;
-          target.item = { ...menuItem };
-        }
+          .where(eq(orderItemsTable.id, existingRow.id));
       }
     } else if (input.qty > 0) {
       await db.insert(orderItemsTable).values({
         orderId,
-        itemId: menuItem.id,
-        name: menuItem.name,
-        price: menuItem.price,
-        category: menuItem.category,
-        description: menuItem.description,
-        imageUrl: menuItem.image_url,
+        menuItemId: currentVersion.id,
         qty: input.qty,
       });
-      order.items.push({ item: { ...menuItem }, qty: input.qty });
     }
 
-    order.total = calculateTotal(order.items);
-    await db
-      .update(ordersTable)
-      .set({ total: order.total })
-      .where(eq(ordersTable.id, orderId));
+    // 重新從 DB 載入此訂單以取得最新資料
+    const reloaded = await this.reloadOrder(orderId);
+    if (reloaded) {
+      const idx = this.orders.findIndex((o) => o.id === orderId);
+      if (idx !== -1) this.orders[idx] = reloaded;
+      return { ok: true, order: reloaded };
+    }
 
-    return { ok: true, order };
+    return { ok: false, code: "ORDER_NOT_FOUND" };
   }
 
   async submitOrder(
@@ -306,7 +447,9 @@ export class PgStore implements Store {
           | "ORDER_NOT_FOUND"
           | "ORDER_NOT_OWNED"
           | "ORDER_NOT_EDITABLE"
-          | "EMPTY_ORDER";
+          | "EMPTY_ORDER"
+          | "OUTDATED_ITEMS";
+        outdatedItems?: Array<{ logicalId: number; name: string }>;
       }
   > {
     const order = this.orders.find((o) => o.id === orderId);
@@ -317,33 +460,41 @@ export class PgStore implements Store {
       return { ok: false, code: "ORDER_NOT_EDITABLE" };
     if (order.items.length === 0) return { ok: false, code: "EMPTY_ORDER" };
 
-    const submittedAt = new Date();
+    // ── 驗證所有項目是否仍為當前版本 ─────────────────────────────
+    const menuItemIds = order.items.map((oi) => oi.menuItemId);
 
-    // 訂單送出前，重新快照所有項目的最新菜單資訊
-    for (const oi of order.items) {
-      const currentMenuItem = this.menu.find((m) => m.id === oi.item.id);
-      if (currentMenuItem) {
-        await db
-          .update(orderItemsTable)
-          .set({
-            name: currentMenuItem.name,
-            price: currentMenuItem.price,
-            category: currentMenuItem.category,
-            description: currentMenuItem.description,
-            imageUrl: currentMenuItem.image_url,
-          })
-          .where(
-            and(
-              eq(orderItemsTable.orderId, orderId),
-              eq(orderItemsTable.itemId, oi.item.id),
-            ),
-          );
-        // 同步記憶體中的 order item 快照
-        oi.item = { ...currentMenuItem };
+    const versionRows = await db
+      .select({
+        id: menuItemsTable.id,
+        logicalId: menuItemsTable.logicalId,
+        name: menuItemsTable.name,
+        isCurrentVersion: menuItemsTable.isCurrentVersion,
+      })
+      .from(menuItemsTable)
+      .where(inArray(menuItemsTable.id, menuItemIds));
+
+    const outdatedItems: Array<{ logicalId: number; name: string }> = [];
+    for (const row of versionRows) {
+      if (!row.isCurrentVersion) {
+        outdatedItems.push({
+          logicalId: row.logicalId,
+          name: row.name,
+        });
       }
     }
 
-    // 重新計算總額（菜單價格可能已更新）
+    if (outdatedItems.length > 0) {
+      return {
+        ok: false,
+        code: "OUTDATED_ITEMS",
+        outdatedItems,
+      };
+    }
+
+    // ── 送出訂單 ───────────────────────────────────────────────
+    const submittedAt = new Date();
+
+    // 重新計算總額
     order.total = calculateTotal(order.items);
 
     await db
@@ -363,6 +514,34 @@ export class PgStore implements Store {
 
   // ── Private ─────────────────────────────────────────────────
 
+  /**
+   * 從 DB 重新載入單一訂單（含 items JOIN menu_items）
+   */
+  private async reloadOrder(orderId: number): Promise<Order | null> {
+    const [orderRow] = await db
+      .select()
+      .from(ordersTable)
+      .where(eq(ordersTable.id, orderId))
+      .limit(1);
+
+    if (!orderRow) return null;
+
+    const oiRows = await db
+      .select()
+      .from(orderItemsTable)
+      .innerJoin(
+        menuItemsTable,
+        eq(orderItemsTable.menuItemId, menuItemsTable.id),
+      )
+      .where(eq(orderItemsTable.orderId, orderId));
+
+    const items: OrderItem[] = oiRows.map(({ order_items, menu_items }) =>
+      toOrderItem(order_items, menu_items),
+    );
+
+    return toOrder(orderRow, items);
+  }
+
   private async seedFromJsonIfEmpty(): Promise<void> {
     const [countRow] = await db
       .select({ value: sql<number>`count(*)` })
@@ -377,20 +556,24 @@ export class PgStore implements Store {
     const menu = Array.isArray(parsed.menu) ? parsed.menu : [];
 
     if (menu.length > 0) {
+      const now = new Date();
       await db.insert(menuItemsTable).values(
         menu.map((item) => ({
-          id: item.id,
+          entityId: crypto.randomUUID(),
+          logicalId: item.id,
+          version: 1,
           name: item.name,
           price: item.price,
           category: item.category,
           description: item.description,
           imageUrl: item.image_url,
+          isCurrentVersion: true,
+          changeReason: "初始建立",
+          createdBy: "系統",
+          createdAt: now,
         })),
       );
     }
-
-    // V9: 不再播 orders seed data（orders 的 user_id FK 指向 Better Auth user 表，
-    // seed JSON 中的舊 userId 在 bf_v9.user 不存在，強制播入會觸發 FK violation）
 
     const schema = process.env.PG_SCHEMA ?? "public";
     await db.execute(
@@ -401,62 +584,39 @@ export class PgStore implements Store {
   }
 
   private async reloadFromDatabase(): Promise<void> {
+    // ── 載入菜單（只取當前版本） ────────────────────────────────
     const menuRows = await db
       .select()
       .from(menuItemsTable)
-      .orderBy(asc(menuItemsTable.id));
+      .where(eq(menuItemsTable.isCurrentVersion, true))
+      .orderBy(asc(menuItemsTable.logicalId));
 
+    this.menu = menuRows.map((row) => toMenuItem(row));
+
+    // ── 載入訂單 ───────────────────────────────────────────────
     const orderRows = await db
       .select()
       .from(ordersTable)
       .orderBy(desc(ordersTable.createdAt), desc(ordersTable.id));
 
-    const orderItemRows = await db
+    const allOiRows = await db
       .select()
       .from(orderItemsTable)
+      .innerJoin(
+        menuItemsTable,
+        eq(orderItemsTable.menuItemId, menuItemsTable.id),
+      )
       .orderBy(asc(orderItemsTable.id));
 
-    this.menu = menuRows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      price: row.price,
-      category: row.category,
-      description: row.description,
-      image_url: row.imageUrl,
-    }));
-
     const itemsByOrderId = new Map<number, OrderItem[]>();
-    for (const row of orderItemRows) {
-      const items = itemsByOrderId.get(row.orderId) ?? [];
-      items.push({
-        item: {
-          id: row.itemId,
-          name: row.name,
-          price: row.price,
-          category: row.category,
-          description: row.description,
-          image_url: row.imageUrl,
-        },
-        qty: row.qty,
-      });
-      itemsByOrderId.set(row.orderId, items);
+    for (const { order_items, menu_items } of allOiRows) {
+      const items = itemsByOrderId.get(order_items.orderId) ?? [];
+      items.push(toOrderItem(order_items, menu_items));
+      itemsByOrderId.set(order_items.orderId, items);
     }
 
-    this.orders = orderRows.map((row) => ({
-      id: row.id,
-      userId: row.userId,
-      items: itemsByOrderId.get(row.id) ?? [],
-      total: row.total,
-      status: row.status === "submitted" ? "submitted" : "pending",
-      createdAt:
-        row.createdAt instanceof Date
-          ? row.createdAt.toISOString()
-          : new Date(row.createdAt).toISOString(),
-      submittedAt: row.submittedAt
-        ? row.submittedAt instanceof Date
-          ? row.submittedAt.toISOString()
-          : new Date(row.submittedAt).toISOString()
-        : undefined,
-    }));
+    this.orders = orderRows.map((row) =>
+      toOrder(row, itemsByOrderId.get(row.id) ?? []),
+    );
   }
 }

@@ -10,11 +10,14 @@ import {
   getOrderByIdParamsSchema,
   healthResponseSchema,
   menuItemResponseSchema,
+  menuItemVersionListResponseSchema,
+  menuItemVersionParamsSchema,
   menuListResponseSchema,
   nullableOrderResponseEnvelopeSchema,
   orderListResponseSchema,
   orderResponseEnvelopeSchema,
   submitOrderParamsSchema,
+  submitValidationErrorSchema,
   toOrderResponse,
   updateMenuItemBodySchema,
   updateMenuItemParamsSchema,
@@ -79,7 +82,7 @@ function requireAnyRole(
 // 具備提升權限的角色（可跟越 ownership 限制）
 const ELEVATED_ROLES: Role[] = ["staff", "owner", "admin"];
 // 可以管理菜單的角色
-const MENU_MANAGER_ROLES: Role[] = ["owner", "admin"];
+const MENU_MANAGER_ROLES: Role[] = ["staff", "owner", "admin"];
 // 可以查看所有訂單的角色
 const ORDER_VIEWER_ROLES: Role[] = ["staff", "chef", "owner", "admin"];
 // 可以管理使用者權限的角色
@@ -206,10 +209,13 @@ app.get("/api/menu", () => ({ data: [...store.getMenu()] }), {
 app.post(
   "/api/menu",
   async ({ request, body, set }) => {
-    const user = await requireUser(request);
-    requireAnyRole(user, MENU_MANAGER_ROLES);
+    const currentUser = await requireUser(request);
+    requireAnyRole(currentUser, MENU_MANAGER_ROLES);
 
-    const newMenuItem = await store.createMenuItem(body);
+    const newMenuItem = await store.createMenuItem({
+      ...body,
+      createdBy: currentUser.name,
+    });
     set.status = 201;
     return { data: newMenuItem };
   },
@@ -217,7 +223,7 @@ app.post(
     body: createMenuItemBodySchema,
     detail: {
       tags: ["menu"],
-      summary: "Create a menu item (owner/admin only)",
+      summary: "Create a menu item (staff/owner/admin only)",
       description: "Add a new menu item into the breakfast menu.",
     },
     response: {
@@ -228,14 +234,38 @@ app.post(
   },
 );
 
+// ─── 版本歷史 ────────────────────────────────────────────────────
+app.get(
+  "/api/menu/:logicalId/versions",
+  async ({ params }) => {
+    const logicalId = parseInt(params.logicalId, 10);
+    const versions = await store.getMenuItemVersions(logicalId);
+    return { data: versions };
+  },
+  {
+    params: menuItemVersionParamsSchema,
+    detail: {
+      tags: ["menu"],
+      summary: "Get menu item version history",
+      description: "Return all versions of a menu item by logical ID.",
+    },
+    response: {
+      200: menuItemVersionListResponseSchema,
+    },
+  },
+);
+
 app.patch(
   "/api/menu/:id",
   async ({ request, params, body, set }) => {
-    const user = await requireUser(request);
-    requireAnyRole(user, MENU_MANAGER_ROLES);
+    const currentUser = await requireUser(request);
+    requireAnyRole(currentUser, MENU_MANAGER_ROLES);
 
     const menuId = parseInt(params.id);
-    const menuItem = await store.updateMenuItem(menuId, body);
+    const menuItem = await store.updateMenuItem(menuId, {
+      ...body,
+      createdBy: currentUser.name,
+    });
 
     if (!menuItem) {
       set.status = 404;
@@ -249,8 +279,9 @@ app.patch(
     body: updateMenuItemBodySchema,
     detail: {
       tags: ["menu"],
-      summary: "Update a menu item (owner/admin only)",
-      description: "Update fields of an existing menu item.",
+      summary: "Update a menu item (staff/owner/admin only)",
+      description:
+        "Update fields of an existing menu item. Creates a new version.",
     },
     response: {
       200: menuItemResponseSchema,
@@ -450,7 +481,7 @@ app.patch(
 
     const result = await store.updateOrderItem(orderId, {
       userId: effectiveUserId,
-      itemId: body.itemId,
+      logicalId: body.logicalId,
       qty: body.qty,
     });
 
@@ -541,6 +572,14 @@ app.post(
     if (!result.ok && result.code === "EMPTY_ORDER") {
       set.status = 400;
       return { error: "Empty order cannot be submitted" };
+    }
+
+    if (!result.ok && result.code === "OUTDATED_ITEMS") {
+      set.status = 409;
+      return {
+        error: "部分菜單項目已更新，請重新加入購物車",
+        outdatedItems: result.outdatedItems,
+      };
     }
 
     if (!result.ok) {
