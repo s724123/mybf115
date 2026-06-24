@@ -40,6 +40,7 @@ function toOrderItem(
   oi: { id: number; orderId: number; menuItemId: number; qty: number },
   mi: {
     id: number;
+    logicalId: number;
     name: string;
     price: number;
     category: string;
@@ -50,6 +51,7 @@ function toOrderItem(
 ): OrderItem {
   return {
     menuItemId: mi.id,
+    logicalId: mi.logicalId,
     menuItemName: mi.name,
     menuItemPrice: mi.price,
     menuItemCategory: mi.category,

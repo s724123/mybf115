@@ -186,6 +186,7 @@ function buildOrderItem(
   );
   return {
     menuItemId: version?.id ?? 0,
+    logicalId: version?.logicalId ?? logicalId,
     menuItemName: version?.name ?? "",
     menuItemPrice: version?.price ?? 0,
     menuItemCategory: version?.category ?? "",
@@ -202,6 +203,7 @@ function enrichOrderItem(menu: MenuItem[], oi: OrderItem): OrderItem {
   if (version) {
     return {
       ...oi,
+      logicalId: version.logicalId,
       menuItemName: version.name,
       menuItemPrice: version.price,
       menuItemCategory: version.category,
@@ -265,6 +267,7 @@ export class JsonFileStore implements Store {
               const normalized = normalizeMenuItem(old.item);
               return {
                 menuItemId: normalized.id,
+                logicalId: normalized.logicalId,
                 menuItemName: normalized.name,
                 menuItemPrice: normalized.price,
                 menuItemCategory: normalized.category,

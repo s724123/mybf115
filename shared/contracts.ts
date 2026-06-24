@@ -75,6 +75,7 @@ export const sessionUserSchema = userSchema
 
 export const orderItemSchema = z.object({
   menuItemId: z.number().int().min(1), // FK 指向 menu_items.id（特定版本）
+  logicalId: z.number().int().min(1), // 跨版本穩定 ID（前端 cart key 用）
   menuItemName: z.string(),
   menuItemPrice: z.number(),
   menuItemCategory: z.string(),

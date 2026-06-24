@@ -3,6 +3,7 @@ import "./App.css";
 import type {
   ApiDataResponse,
   MenuItem,
+  MenuItemVersionHistory,
   Order,
   SessionUser,
 } from "../../shared/contracts.ts";
@@ -33,7 +34,7 @@ export default function App() {
   const [isClearingCart, setIsClearingCart] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   // Admin page state
-  const [view, setView] = useState<"menu" | "admin">("menu");
+  const [view, setView] = useState<"menu" | "menu-manage" | "admin">("menu");
   const [adminUsers, setAdminUsers] = useState<
     Array<{
       id: string;
@@ -48,7 +49,7 @@ export default function App() {
   function syncCartFromOrder(order: Order) {
     const nextQtyByItemId = order.items.reduce(
       (acc, orderItem) => {
-        acc[orderItem.item.id] = orderItem.qty;
+        acc[orderItem.logicalId] = orderItem.qty;
         return acc;
       },
       {} as Record<number, number>,
@@ -131,31 +132,6 @@ export default function App() {
     }
     void restoreSession();
 
-    async function loadMenu() {
-      try {
-        const response = await fetch(buildApiUrl("/api/menu"));
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const payload = (await response.json()) as ApiDataResponse<MenuItem[]>;
-        const fetchedItems = Array.isArray(payload?.data) ? payload.data : [];
-
-        if (mounted) {
-          setItems(fetchedItems);
-        }
-      } catch (fetchError) {
-        if (mounted) {
-          setError("無法取得菜單資料，請稍後再試。");
-          console.error(fetchError);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
-
     void loadMenu();
 
     return () => {
@@ -203,18 +179,18 @@ export default function App() {
   );
 
   const cartDetails = useMemo(() => {
-    const itemById = new Map(items.map((item) => [item.id, item]));
+    const itemByLogicalId = new Map(items.map((item) => [item.logicalId, item]));
 
     return Object.entries(cartQtyByItemId)
-      .map(([itemIdText, qty]) => {
-        const itemId = Number(itemIdText);
-        const item = itemById.get(itemId);
+      .map(([logicalIdText, qty]) => {
+        const logicalId = Number(logicalIdText);
+        const item = itemByLogicalId.get(logicalId);
         if (!item || qty <= 0) {
           return null;
         }
 
         return {
-          itemId,
+          logicalId,
           qty,
           item,
           subtotal: item.price * qty,
@@ -320,7 +296,7 @@ export default function App() {
 
   async function addToCart(item: MenuItem): Promise<void> {
     setActionError("");
-    setActiveItemId(item.id);
+    setActiveItemId(item.logicalId);
 
     try {
       if (!user) {
@@ -338,7 +314,7 @@ export default function App() {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({
-              itemId: item.id,
+              logicalId: item.logicalId,
               qty,
             }),
           },
@@ -359,7 +335,7 @@ export default function App() {
       };
 
       const targetOrderId = await ensureOrder();
-      const currentQty = cartQtyByItemId[item.id] ?? 0;
+      const currentQty = cartQtyByItemId[item.logicalId] ?? 0;
       const nextQty = currentQty + 1;
 
       try {
@@ -380,7 +356,7 @@ export default function App() {
           const retryOrderId = recoveredOrder?.id ?? (await ensureOrder());
           const recoveredQty =
             recoveredOrder?.items.find(
-              (orderItem) => orderItem.item.id === item.id,
+              (orderItem) => orderItem.logicalId === item.logicalId,
             )?.qty ?? 0;
           const retryQty = recoveredQty + 1;
 
@@ -403,7 +379,7 @@ export default function App() {
         try {
           const recoveredOrder = await loadCurrentOrder();
           const recoveredQty = recoveredOrder?.items.find(
-            (orderItem) => orderItem.item.id === item.id,
+            (orderItem) => orderItem.logicalId === item.logicalId,
           )?.qty;
 
           if (typeof recoveredQty === "number" && recoveredQty > 0) {
@@ -436,7 +412,7 @@ export default function App() {
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            itemId: detail.itemId,
+            logicalId: detail.logicalId,
             qty: 0,
           }),
         });
@@ -476,21 +452,41 @@ export default function App() {
       );
 
       if (!response.ok) {
-        throw new Error(`Submit order failed: HTTP ${response.status}`);
+        const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+        throw new Error(
+          (body.error as string) || `Submit order failed: HTTP ${response.status}`,
+        );
       }
 
       resetCartState();
       setIsCartOpen(false);
       await loadOrderHistory();
     } catch (submitError) {
-      setActionError("送出訂單失敗，請稍後再試。");
+      const msg = submitError instanceof Error ? submitError.message : "送出訂單失敗";
+      setActionError(msg);
       console.error(submitError);
     } finally {
       setIsSubmittingOrder(false);
     }
   }
 
-  // ─── Admin helpers ───────────────────────────────────────
+  async function loadMenu() {
+    try {
+      const response = await fetch(buildApiUrl("/api/menu"));
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const payload = (await response.json()) as ApiDataResponse<MenuItem[]>;
+      const fetchedItems = Array.isArray(payload?.data) ? payload.data : [];
+      setItems(fetchedItems);
+    } catch (fetchError) {
+      setError("無法取得菜單資料，請稍後再試。");
+      console.error(fetchError);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // 切換到管理員頁面時載入使用者清單
   useEffect(() => {
@@ -632,6 +628,16 @@ export default function App() {
               購物車 {cartItemCount} 件
             </div>
             <div className="badge badge-accent">總計 ${cartTotal}</div>
+            {user?.roles?.some((r) => ["staff", "owner", "admin"].includes(r)) ? (
+              <button
+                className="btn btn-sm btn-info"
+                onClick={() => {
+                  setView(view === "menu-manage" ? "menu" : "menu-manage");
+                }}
+              >
+                {view === "menu-manage" ? "回菜單" : "管理菜單"}
+              </button>
+            ) : null}
             {user?.roles?.includes("admin") ? (
               <button
                 className="btn btn-sm btn-warning"
@@ -674,6 +680,8 @@ export default function App() {
           onAddRole={handleAddRole}
           onDeleteRole={handleDeleteRole}
         />
+      ) : view === "menu-manage" ? (
+        <MenuManagePanel items={items} onMenuUpdate={loadMenu} />
       ) : (
         <main className="container mx-auto p-6">
         {!user ? (
@@ -793,8 +801,8 @@ export default function App() {
                       </p>
                       <ul className="text-sm list-disc pl-5 space-y-1">
                         {order.items.map((detail) => (
-                          <li key={`${order.id}-${detail.item.id}`}>
-                            {detail.item.name} x {detail.qty}
+                          <li key={`${order.id}-${detail.menuItemId}`}>
+                            {detail.menuItemName} x {detail.qty}
                           </li>
                         ))}
                       </ul>
@@ -842,7 +850,7 @@ export default function App() {
                 <ul className="space-y-3">
                   {cartDetails.map((detail) => (
                     <li
-                      key={detail.itemId}
+                      key={detail.logicalId}
                       className="p-3 rounded-lg bg-base-200 flex items-center justify-between"
                     >
                       <div>
@@ -890,6 +898,231 @@ export default function App() {
         </>
       ) : null}
     </div>
+  );
+}
+
+// ─── MenuManagePanel Component ────────────────────────────
+
+function MenuManagePanel({
+  items,
+  onMenuUpdate,
+}: {
+  items: MenuItem[];
+  onMenuUpdate: () => Promise<void>;
+}) {
+  const [editItem, setEditItem] = useState<MenuItem | null>(null);
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [panelError, setPanelError] = useState("");
+  const [versionsByLogicalId, setVersionsByLogicalId] = useState<
+    Record<number, MenuItemVersionHistory[]>
+  >({});
+  const [expandedLogicalId, setExpandedLogicalId] = useState<number | null>(null);
+
+  function resetForm() {
+    setEditItem(null);
+    setName("");
+    setPrice("");
+    setCategory("");
+    setDescription("");
+    setImageUrl("");
+    setReason("");
+  }
+
+  function loadForEdit(item: MenuItem) {
+    setEditItem(item);
+    setName(item.name);
+    setPrice(String(item.price));
+    setCategory(item.category);
+    setDescription(item.description);
+    setImageUrl(item.image_url);
+    setReason("");
+  }
+
+  async function loadVersions(logicalId: number) {
+    if (versionsByLogicalId[logicalId]) {
+      setExpandedLogicalId(expandedLogicalId === logicalId ? null : logicalId);
+      return;
+    }
+
+    try {
+      const res = await fetch(buildApiUrl(`/api/menu/${logicalId}/versions`));
+      if (res.ok) {
+        const payload = (await res.json()) as { data: MenuItemVersionHistory[] };
+        setVersionsByLogicalId((prev) => ({
+          ...prev,
+          [logicalId]: payload.data,
+        }));
+        setExpandedLogicalId(logicalId);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setPanelError("");
+    setSaving(true);
+
+    try {
+      const body: Record<string, unknown> = {
+        name,
+        price: Number(price),
+        category,
+        description,
+        image_url: imageUrl,
+      };
+
+      if (editItem) {
+        // 修改現有項目
+        body.reason = reason;
+        const res = await fetch(buildApiUrl(`/api/menu/${editItem.logicalId}`), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } else {
+        // 新增項目
+        const res = await fetch(buildApiUrl("/api/menu"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      }
+
+      resetForm();
+      await onMenuUpdate();
+    } catch {
+      setPanelError("操作失敗，請稍後再試。");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const currentItems = items.filter((i) => i.isCurrentVersion);
+
+  return (
+    <main className="container mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">菜單管理</h1>
+
+      {panelError ? (
+        <div className="alert alert-error mb-4">
+          <span>{panelError}</span>
+        </div>
+      ) : null}
+
+      {/* ── 表單 ── */}
+      <form onSubmit={handleSubmit} className="card bg-base-100 shadow-md mb-6 p-4">
+        <h2 className="font-bold mb-3">
+          {editItem ? `正在修改：${editItem.name}（v${editItem.version}）` : "新增菜單項目"}
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="form-control">
+            <span className="label-text">名稱</span>
+            <input className="input input-bordered input-sm" value={name} onChange={(e) => setName(e.target.value)} required />
+          </label>
+          <label className="form-control">
+            <span className="label-text">價格</span>
+            <input className="input input-bordered input-sm" type="number" min="0" value={price} onChange={(e) => setPrice(e.target.value)} required />
+          </label>
+          <label className="form-control">
+            <span className="label-text">分類</span>
+            <input className="input input-bordered input-sm" value={category} onChange={(e) => setCategory(e.target.value)} required />
+          </label>
+          <label className="form-control">
+            <span className="label-text">圖片網址</span>
+            <input className="input input-bordered input-sm" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} required />
+          </label>
+          <label className="form-control md:col-span-2">
+            <span className="label-text">描述</span>
+            <textarea className="textarea textarea-bordered textarea-sm" value={description} onChange={(e) => setDescription(e.target.value)} required />
+          </label>
+          {editItem ? (
+            <label className="form-control md:col-span-2">
+              <span className="label-text">修改原因 *</span>
+              <input className="input input-bordered input-sm" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="例如：物料成本上漲" required />
+            </label>
+          ) : null}
+        </div>
+        <div className="flex gap-2 mt-3">
+          <button className="btn btn-primary btn-sm" disabled={saving}>
+            {saving ? "儲存中..." : editItem ? "儲存修改" : "新增"}
+          </button>
+          {editItem ? (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={resetForm}>
+              取消
+            </button>
+          ) : null}
+        </div>
+      </form>
+
+      {/* ── 菜單項目列表 ── */}
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold mb-2">所有菜單項目</h2>
+        {currentItems.length === 0 ? (
+          <div className="alert alert-info">
+            <span>目前沒有菜單資料。</span>
+          </div>
+        ) : (
+          currentItems.map((item) => (
+            <div key={item.logicalId} className="card bg-base-100 shadow-sm border border-base-300">
+              <div className="card-body p-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{item.name}</span>
+                    <span className="badge badge-sm">${item.price}</span>
+                    <span className="badge badge-sm badge-ghost">{item.category}</span>
+                    <span className="text-xs opacity-50">v{item.version}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      className="btn btn-xs btn-outline"
+                      onClick={() => loadForEdit(item)}
+                    >
+                      編輯
+                    </button>
+                    <button
+                      className="btn btn-xs btn-ghost"
+                      onClick={() => loadVersions(item.logicalId)}
+                    >
+                      歷史
+                    </button>
+                  </div>
+                </div>
+
+                {expandedLogicalId === item.logicalId && versionsByLogicalId[item.logicalId] ? (
+                  <div className="mt-2 pl-2 border-l-2 border-base-300 space-y-1">
+                    <p className="text-xs font-semibold opacity-60">版本歷史</p>
+                    {versionsByLogicalId[item.logicalId].map((v) => (
+                      <div key={v.id} className="text-xs flex items-center gap-2">
+                        <span className="badge badge-xs">v{v.version}</span>
+                        <span>${v.price}</span>
+                        <span className="opacity-60">{v.name}</span>
+                        {v.changeReason ? (
+                          <span className="opacity-50">（{v.changeReason}）</span>
+                        ) : null}
+                        <span className="opacity-40">{v.createdBy}</span>
+                        <span className="opacity-40">{new Date(v.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </main>
   );
 }
 
