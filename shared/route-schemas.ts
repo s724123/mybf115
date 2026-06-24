@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Order } from "./contracts.ts";
-import { menuItemSchema, orderSchema } from "./contracts.ts";
+import { menuItemSchema, orderSchema, roleSchema } from "./contracts.ts";
 import toTaipeiDateTime from "../util.ts";
 
 export type { Order };
@@ -102,6 +102,37 @@ export const orderResponseEnvelopeSchema = z.object({
 
 export const nullableOrderResponseEnvelopeSchema = z.object({
   data: orderResponseSchema.nullable(),
+});
+
+export const adminUserSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  email: z.string().min(1),
+  roles: z.array(roleSchema),
+  createdAt: z.string().min(1),
+});
+
+export const adminUsersResponseSchema = z.object({
+  data: z.array(adminUserSchema),
+});
+
+/** POST /api/admin/users/:userId/roles */
+export const addRoleParamsSchema = z.object({
+  userId: z.string().min(1),
+});
+
+export const addRoleBodySchema = z.object({
+  role: roleSchema,
+});
+
+/** DELETE /api/admin/users/:userId/roles/:role */
+export const deleteRoleParamsSchema = z.object({
+  userId: z.string().min(1),
+  role: z.string().min(1),
+});
+
+export const adminSuccessResponseSchema = z.object({
+  message: z.string(),
 });
 
 export const healthResponseSchema = z.object({

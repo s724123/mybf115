@@ -32,6 +32,18 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isClearingCart, setIsClearingCart] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  // Admin page state
+  const [view, setView] = useState<"menu" | "admin">("menu");
+  const [adminUsers, setAdminUsers] = useState<
+    Array<{
+      id: string;
+      name: string;
+      email: string;
+      roles: string[];
+    }>
+  >([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState("");
 
   function syncCartFromOrder(order: Order) {
     const nextQtyByItemId = order.items.reduce(
@@ -104,7 +116,7 @@ export default function App() {
     // V9: 從 Better Auth session cookie 恢復登入狀態（不再用 localStorage）
     async function restoreSession() {
       try {
-        const res = await fetch(buildApiUrl("/api/auth/get-session"), {
+        const res = await fetch(buildApiUrl("/api/auth/me"), {
           credentials: "include",
         });
         if (res.ok) {
@@ -478,6 +490,112 @@ export default function App() {
     }
   }
 
+  // ─── Admin helpers ───────────────────────────────────────
+
+  // 切換到管理員頁面時載入使用者清單
+  useEffect(() => {
+    if (view === "admin") {
+      void loadAdminUsers();
+    }
+  }, [view]);
+
+  async function loadAdminUsers(): Promise<void> {
+    setAdminLoading(true);
+    setAdminError("");
+
+    try {
+      const response = await fetch(buildApiUrl("/api/admin/users"), {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const payload = (await response.json()) as {
+        data: Array<{
+          id: string;
+          name: string;
+          email: string;
+          roles: string[];
+          createdAt: string;
+        }>;
+      };
+
+      if (Array.isArray(payload?.data)) {
+        setAdminUsers(payload.data);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "未知錯誤";
+      setAdminError(`載入使用者清單失敗：${msg}`);
+    } finally {
+      setAdminLoading(false);
+    }
+  }
+
+  async function handleAddRole(userId: string, role: string): Promise<void> {
+    setAdminError("");
+
+    try {
+      const response = await fetch(
+        buildApiUrl(`/api/admin/users/${userId}/roles`),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ role }),
+        },
+      );
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as Record<
+          string,
+          unknown
+        >;
+        throw new Error(
+          (data.error as string) || `HTTP ${response.status}`,
+        );
+      }
+
+      await loadAdminUsers();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "未知錯誤";
+      setAdminError(`新增角色失敗：${msg}`);
+    }
+  }
+
+  async function handleDeleteRole(
+    userId: string,
+    role: string,
+  ): Promise<void> {
+    setAdminError("");
+
+    try {
+      const response = await fetch(
+        buildApiUrl(`/api/admin/users/${userId}/roles/${encodeURIComponent(role)}`),
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as Record<
+          string,
+          unknown
+        >;
+        throw new Error(
+          (data.error as string) || `HTTP ${response.status}`,
+        );
+      }
+
+      await loadAdminUsers();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "未知錯誤";
+      setAdminError(`刪除角色失敗：${msg}`);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -514,6 +632,16 @@ export default function App() {
               購物車 {cartItemCount} 件
             </div>
             <div className="badge badge-accent">總計 ${cartTotal}</div>
+            {user?.roles?.includes("admin") ? (
+              <button
+                className="btn btn-sm btn-warning"
+                onClick={() => {
+                  setView(view === "admin" ? "menu" : "admin");
+                }}
+              >
+                {view === "admin" ? "回菜單" : "管理員"}
+              </button>
+            ) : null}
             <button
               className="btn btn-sm btn-outline"
               onClick={() => {
@@ -537,7 +665,17 @@ export default function App() {
         </div>
       </div>
 
-      <main className="container mx-auto p-6">
+      {view === "admin" ? (
+        <AdminPanel
+          user={user}
+          users={adminUsers}
+          loading={adminLoading}
+          error={adminError}
+          onAddRole={handleAddRole}
+          onDeleteRole={handleDeleteRole}
+        />
+      ) : (
+        <main className="container mx-auto p-6">
         {!user ? (
           <section className="max-w-xl mx-auto card bg-base-100 shadow-md mb-8">
             <div className="card-body">
@@ -671,6 +809,7 @@ export default function App() {
           </section>
         ) : null}
       </main>
+      )}
 
       {user && isCartOpen ? (
         <>
@@ -751,5 +890,158 @@ export default function App() {
         </>
       ) : null}
     </div>
+  );
+}
+
+// ─── AdminPanel Component ─────────────────────────────────
+
+const ALL_ROLES = [
+  "customer",
+  "staff",
+  "chef",
+  "owner",
+  "admin",
+] as const;
+
+function AdminPanel({
+  user,
+  users,
+  loading,
+  error,
+  onAddRole,
+  onDeleteRole,
+}: {
+  user: SessionUser | null;
+  users: Array<{ id: string; name: string; email: string; roles: string[] }>;
+  loading: boolean;
+  error: string;
+  onAddRole: (userId: string, role: string) => Promise<void>;
+  onDeleteRole: (userId: string, role: string) => Promise<void>;
+}) {
+  const [addingUserId, setAddingUserId] = useState<string | null>(null);
+  const [selectedRoleByUser, setSelectedRoleByUser] = useState<
+    Record<string, string>
+  >({});
+
+  async function handleAdd(userId: string): Promise<void> {
+    const role = selectedRoleByUser[userId];
+    if (!role) return;
+    setAddingUserId(userId);
+    await onAddRole(userId, role);
+    setAddingUserId(null);
+  }
+
+  return (
+    <main className="container mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">使用者權限管理</h1>
+
+      {error ? (
+        <div className="alert alert-error mb-4">
+          <span>{error}</span>
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="alert mb-4">
+          <span>載入中...</span>
+        </div>
+      ) : users.length === 0 ? (
+        <div className="alert alert-info">
+          <span>目前沒有使用者資料。</span>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {users.map((u) => {
+            const isSelf = user?.id === u.id;
+            const availableRoles = ALL_ROLES.filter(
+              (r) => !u.roles.includes(r),
+            );
+            const selectedRole =
+              selectedRoleByUser[u.id] ?? availableRoles[0] ?? "";
+
+            return (
+              <div
+                key={u.id}
+                className="card bg-base-100 shadow-md border border-base-300"
+              >
+                <div className="card-body p-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <h3 className="font-semibold text-lg">
+                        {u.name}
+                        {isSelf ? (
+                          <span className="badge badge-warning ml-2">自己</span>
+                        ) : null}
+                      </h3>
+                      <p className="text-sm opacity-70">{u.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">權限：</span>
+                    {u.roles.length === 0 ? (
+                      <span className="text-sm opacity-50">無</span>
+                    ) : (
+                      u.roles.map((role) => {
+                        const isAdminSelf = isSelf && role === "admin";
+                        return (
+                          <span
+                            key={role}
+                            className="badge badge-md gap-1"
+                          >
+                            {role}
+                            {!isAdminSelf ? (
+                              <button
+                                className="btn btn-xs btn-ghost text-error ml-1"
+                                title="移除角色"
+                                onClick={() => {
+                                  void onDeleteRole(u.id, role);
+                                }}
+                              >
+                                ✕
+                              </button>
+                            ) : null}
+                          </span>
+                        );
+                      })
+                    )}
+
+                    {availableRoles.length > 0 ? (
+                      <div className="flex items-center gap-1 ml-2">
+                        <select
+                          className="select select-bordered select-xs"
+                          value={selectedRole}
+                          onChange={(e) => {
+                            setSelectedRoleByUser((prev) => ({
+                              ...prev,
+                              [u.id]: e.target.value,
+                            }));
+                          }}
+                        >
+                          {availableRoles.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          className="btn btn-xs btn-primary"
+                          disabled={addingUserId === u.id}
+                          onClick={() => {
+                            void handleAdd(u.id);
+                          }}
+                        >
+                          {addingUserId === u.id ? "新增中..." : "新增權限"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </main>
   );
 }

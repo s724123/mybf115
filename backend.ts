@@ -24,6 +24,17 @@ import {
 import { createStore } from "./store/index.ts";
 import { auth, getCurrentUser } from "./auth/better-auth.ts";
 import type { Role } from "./shared/contracts.ts";
+import {
+  addRoleBodySchema,
+  addRoleParamsSchema,
+  adminSuccessResponseSchema,
+  adminUserSchema,
+  adminUsersResponseSchema,
+  deleteRoleParamsSchema,
+} from "./shared/route-schemas.ts";
+import { db } from "./db/client.ts";
+import { user, userRole } from "./db/auth-schema.ts";
+import { and, eq } from "drizzle-orm";
 
 // 從環境變量獲取配置
 const port = parseInt(process.env.PORT || "3000", 10);
@@ -71,6 +82,8 @@ const ELEVATED_ROLES: Role[] = ["staff", "owner", "admin"];
 const MENU_MANAGER_ROLES: Role[] = ["owner", "admin"];
 // 可以查看所有訂單的角色
 const ORDER_VIEWER_ROLES: Role[] = ["staff", "chef", "owner", "admin"];
+// 可以管理使用者權限的角色
+const ADMIN_ROLES: Role[] = ["admin"];
 
 const app = new Elysia();
 
@@ -93,6 +106,21 @@ app.use(
 //
 // ✅ 正確做法：使用 wildcard 路由明確處理 GET 和 POST
 // 必須在其他 API 路由之前定義，確保 Better Auth 路由優先匹配
+
+// 自訂 session endpoint：回傳含角色的使用者資訊（Better Auth 原生 get-session 不包含 roles）
+app.get("/api/auth/me", async ({ request }) => {
+  const sessionUser = await getCurrentUser(request);
+  if (!sessionUser) {
+    return new Response(JSON.stringify(null), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  return new Response(JSON.stringify({ user: sessionUser }), {
+    headers: { "Content-Type": "application/json" },
+  });
+});
+
 app.get("/api/auth/*", ({ request }) => auth.handler(request));
 app.post("/api/auth/*", ({ request }) => auth.handler(request));
 
@@ -537,6 +565,184 @@ app.post(
       404: apiErrorResponseSchema,
       409: apiErrorResponseSchema,
       500: apiErrorResponseSchema,
+    },
+  },
+);
+
+// ─── Admin Routes（使用者權限管理）────────────────────────────────────────────
+
+// 取得所有使用者與其角色
+app.get(
+  "/api/admin/users",
+  async ({ request, set }) => {
+    const currentUser = await requireUser(request);
+    requireAnyRole(currentUser, ADMIN_ROLES);
+
+    const rows = await db.select().from(user);
+    const roleRows = await db
+      .select({
+        userId: userRole.userId,
+        role: userRole.role,
+      })
+      .from(userRole);
+
+    const rolesByUserId = new Map<string, string[]>();
+    for (const row of roleRows) {
+      const list = rolesByUserId.get(row.userId);
+      if (list) {
+        list.push(row.role);
+      } else {
+        rolesByUserId.set(row.userId, [row.role]);
+      }
+    }
+
+    return {
+      data: rows.map((u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        roles: (rolesByUserId.get(u.id) ?? []) as (
+          | "customer"
+          | "staff"
+          | "chef"
+          | "owner"
+          | "admin"
+        )[],
+        createdAt:
+          u.createdAt instanceof Date
+            ? u.createdAt.toISOString()
+            : new Date(u.createdAt).toISOString(),
+      })),
+    };
+  },
+  {
+    detail: {
+      tags: ["admin"],
+      summary: "List all users with roles",
+      description: "Return all users and their roles. Admin only.",
+    },
+    response: {
+      200: adminUsersResponseSchema,
+      401: apiErrorResponseSchema,
+      403: apiErrorResponseSchema,
+    },
+  },
+);
+
+// 為使用者新增角色
+app.post(
+  "/api/admin/users/:userId/roles",
+  async ({ params, body, request, set }) => {
+    const currentUser = await requireUser(request);
+    requireAnyRole(currentUser, ADMIN_ROLES);
+
+    const { userId } = params;
+    const { role } = body;
+
+    // 檢查使用者是否存在
+    const [targetUser] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
+    if (!targetUser) {
+      set.status = 404;
+      return { error: "User not found" };
+    }
+
+    // 檢查是否已擁有該角色
+    const [existingRole] = await db
+      .select({ id: userRole.id })
+      .from(userRole)
+      .where(and(eq(userRole.userId, userId), eq(userRole.role, role)))
+      .limit(1);
+
+    if (existingRole) {
+      set.status = 409;
+      return { error: "User already has this role" };
+    }
+
+    await db.insert(userRole).values({
+      id: crypto.randomUUID(),
+      userId,
+      role,
+      createdAt: new Date(),
+    });
+
+    return { message: "Role added successfully" };
+  },
+  {
+    params: addRoleParamsSchema,
+    body: addRoleBodySchema,
+    detail: {
+      tags: ["admin"],
+      summary: "Add role to user",
+      description: "Assign a role to a user. Admin only.",
+    },
+    response: {
+      200: adminSuccessResponseSchema,
+      401: apiErrorResponseSchema,
+      403: apiErrorResponseSchema,
+      404: apiErrorResponseSchema,
+      409: apiErrorResponseSchema,
+    },
+  },
+);
+
+// 刪除使用者的角色
+app.delete(
+  "/api/admin/users/:userId/roles/:role",
+  async ({ params, request, set }) => {
+    const currentUser = await requireUser(request);
+    requireAnyRole(currentUser, ADMIN_ROLES);
+
+    const { userId } = params;
+    const role = params.role;
+
+    // 檢查使用者是否存在
+    const [targetUser] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+
+    if (!targetUser) {
+      set.status = 404;
+      return { error: "User not found" };
+    }
+
+    // 不允許移除自己的 admin 角色
+    if (userId === currentUser.id && role === "admin") {
+      set.status = 400;
+      return { error: "Cannot remove your own admin role" };
+    }
+
+    const [deleted] = await db
+      .delete(userRole)
+      .where(and(eq(userRole.userId, userId), eq(userRole.role, role)))
+      .returning({ id: userRole.id });
+
+    if (!deleted) {
+      set.status = 404;
+      return { error: "Role not found for this user" };
+    }
+
+    return { message: "Role removed successfully" };
+  },
+  {
+    params: deleteRoleParamsSchema,
+    detail: {
+      tags: ["admin"],
+      summary: "Remove role from user",
+      description: "Remove a role from a user. Admin only.",
+    },
+    response: {
+      200: adminSuccessResponseSchema,
+      400: apiErrorResponseSchema,
+      401: apiErrorResponseSchema,
+      403: apiErrorResponseSchema,
+      404: apiErrorResponseSchema,
     },
   },
 );
