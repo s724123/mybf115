@@ -16,12 +16,33 @@ export const roleSchema = z.enum([
 ]);
 
 export const menuItemSchema = z.object({
-  id: z.number().int().min(1),
+  id: z.number().int().min(1), // PK（每個版本獨立的 auto-increment ID）
+  entityId: z.string().uuid(), // 內部穩定關聯用 UUID
+  logicalId: z.number().int().min(1), // 跨版本穩定的邏輯 ID
+  version: z.number().int().min(1),
   name: z.string().min(1),
   price: z.number().min(0),
   category: z.string().min(1),
   description: z.string(),
   image_url: z.string().min(1),
+  isCurrentVersion: z.boolean(),
+  changeReason: z.string().optional(),
+  createdBy: z.string().min(1),
+  createdAt: z.string().min(1),
+});
+
+// ─── Menu Item Version History（菜單項目版本歷史）───────────────────────────
+export const menuItemVersionHistorySchema = z.object({
+  version: z.number().int().min(1),
+  id: z.number().int().min(1), // 版本 PK
+  name: z.string().min(1),
+  price: z.number().min(0),
+  category: z.string().min(1),
+  description: z.string(),
+  image_url: z.string().min(1),
+  changeReason: z.string().optional(),
+  createdBy: z.string().min(1),
+  createdAt: z.string().min(1),
 });
 
 // ─── User schemas（業務層）──────────────────────────────────────────────────
@@ -53,7 +74,13 @@ export const sessionUserSchema = userSchema
   });
 
 export const orderItemSchema = z.object({
-  item: menuItemSchema,
+  menuItemId: z.number().int().min(1), // FK 指向 menu_items.id（特定版本）
+  menuItemName: z.string(),
+  menuItemPrice: z.number(),
+  menuItemCategory: z.string(),
+  menuItemDescription: z.string(),
+  menuItemImageUrl: z.string(),
+  menuItemVersion: z.number().int().min(1),
   qty: z.number().min(0),
 });
 
@@ -69,6 +96,9 @@ export const orderSchema = z.object({
 
 // ─── Derived TypeScript Types（自動推導，永不過時）───────────────────────────
 export type MenuItem = z.infer<typeof menuItemSchema>;
+export type MenuItemVersionHistory = z.infer<
+  typeof menuItemVersionHistorySchema
+>;
 export type User = z.infer<typeof userSchema>;
 export type Role = z.infer<typeof roleSchema>;
 export type SessionUser = z.infer<typeof sessionUserSchema>;

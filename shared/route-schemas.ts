@@ -1,6 +1,11 @@
 import { z } from "zod";
 import type { Order } from "./contracts.ts";
-import { menuItemSchema, orderSchema, roleSchema } from "./contracts.ts";
+import {
+  menuItemSchema,
+  menuItemVersionHistorySchema,
+  orderSchema,
+  roleSchema,
+} from "./contracts.ts";
 import toTaipeiDateTime from "../util.ts";
 
 export type { Order };
@@ -44,7 +49,12 @@ export const createMenuItemBodySchema = z.object({
   image_url: z.string().min(1),
 });
 
-/** PATCH /api/menu/:id */
+/** GET /api/menu/:logicalId/versions */
+export const menuItemVersionParamsSchema = z.object({
+  logicalId: z.string().regex(/^[0-9]+$/),
+});
+
+/** PATCH /api/menu/:id (id = logicalId) */
 export const updateMenuItemParamsSchema = z.object({
   id: z.string().regex(/^[0-9]+$/),
 });
@@ -55,6 +65,7 @@ export const updateMenuItemBodySchema = z.object({
   category: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   image_url: z.string().min(1).optional(),
+  reason: z.string().min(1), // 修改原因（版本化必填）
 });
 
 /** DELETE /api/menu/:id */
@@ -73,7 +84,7 @@ export const updateOrderParamsSchema = z.object({
 });
 
 export const updateOrderBodySchema = z.object({
-  itemId: z.number().int().min(1),
+  logicalId: z.number().int().min(1), // 菜單項目的 logic ID
   qty: z.number().min(0),
 });
 
@@ -90,6 +101,21 @@ export const menuListResponseSchema = z.object({
 
 export const menuItemResponseSchema = z.object({
   data: menuItemSchema,
+});
+
+export const menuItemVersionListResponseSchema = z.object({
+  data: z.array(menuItemVersionHistorySchema),
+});
+
+/** 拒絕提交時回傳過期項目清單 */
+export const submitValidationErrorSchema = z.object({
+  error: z.string(),
+  outdatedItems: z.array(
+    z.object({
+      logicalId: z.number().int().min(1),
+      name: z.string(),
+    }),
+  ),
 });
 
 export const orderListResponseSchema = z.object({
