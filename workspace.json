@@ -3,7 +3,7 @@
   "description": "Breakfast Shop Ordering System — V9 (Better Auth + Drizzle + Neon)",
   "documentation": {},
   "id": 1,
-  "lastModifiedDate": "2026-06-24T09:09:49Z",
+  "lastModifiedDate": "2026-06-25T06:30:00Z",
   "model": {
     "people": [
       {
@@ -34,7 +34,7 @@
         "tags": "Element,Person"
       },
       {
-        "description": "協助顧客點餐、查看所有訂單狀態的店員。",
+        "description": "協助顧客點餐、管理菜單項目、查看所有訂單狀態的店員。",
         "id": "56",
         "name": "店員",
         "properties": {
@@ -42,7 +42,7 @@
         },
         "relationships": [
           {
-            "description": "瀏覽菜單、協助顧客下單、查看所有訂單",
+            "description": "瀏覽菜單、管理菜單項目、協助顧客下單、查看所有訂單",
             "destinationId": "5",
             "id": "60",
             "sourceId": "56",
@@ -50,7 +50,7 @@
             "technology": "HTTPS / Browser"
           },
           {
-            "description": "瀏覽菜單、協助顧客下單、查看所有訂單",
+            "description": "瀏覽菜單、管理菜單項目、協助顧客下單、查看所有訂單",
             "destinationId": "4",
             "id": "61",
             "linkedRelationshipId": "60",
@@ -88,7 +88,7 @@
         "tags": "Element,Person"
       },
       {
-        "description": "管理菜單項目、查看所有訂單與營業狀況的店長。",
+        "description": "管理菜單項目（含版本歷史）、查看所有訂單與營業狀況的店長。",
         "id": "58",
         "name": "店長",
         "properties": {
@@ -96,7 +96,7 @@
         },
         "relationships": [
           {
-            "description": "瀏覽菜單、管理菜單項目、查看所有訂單",
+            "description": "瀏覽菜單、管理菜單項目（含版本歷史）、查看所有訂單",
             "destinationId": "5",
             "id": "64",
             "sourceId": "58",
@@ -104,7 +104,7 @@
             "technology": "HTTPS / Browser"
           },
           {
-            "description": "瀏覽菜單、管理菜單項目、查看所有訂單",
+            "description": "瀏覽菜單、管理菜單項目（含版本歷史）、查看所有訂單",
             "destinationId": "4",
             "id": "65",
             "linkedRelationshipId": "64",
@@ -115,7 +115,7 @@
         "tags": "Element,Person"
       },
       {
-        "description": "系統管理員，管理使用者權限與系統設定，擁有完整控制權。",
+        "description": "系統管理員，管理使用者權限、菜單項目（含版本歷史）與系統設定，擁有完整控制權。",
         "id": "59",
         "name": "管理員",
         "properties": {
@@ -123,7 +123,7 @@
         },
         "relationships": [
           {
-            "description": "瀏覽菜單、管理菜單項目與使用者權限、查看所有訂單",
+            "description": "瀏覽菜單、管理菜單項目（含版本歷史）與使用者權限、查看所有訂單",
             "destinationId": "5",
             "id": "66",
             "sourceId": "59",
@@ -131,7 +131,7 @@
             "technology": "HTTPS / Browser"
           },
           {
-            "description": "瀏覽菜單、管理菜單項目與使用者權限、查看所有訂單",
+            "description": "瀏覽菜單、管理菜單項目（含版本歷史）與使用者權限、查看所有訂單",
             "destinationId": "4",
             "id": "67",
             "linkedRelationshipId": "66",
@@ -166,7 +166,7 @@
       {
         "containers": [
           {
-            "description": "在瀏覽器中執行的 React 應用。V10 使用 GET /api/auth/me 恢復 session（含 roles 資訊，不再呼叫 Better Auth 原生 get-session）；新增管理員頁面（AdminPanel）供 admin 使用者檢視及管理所有使用者權限；導覽列依 user.roles 條件式顯示管理員按鈕；所有 API 請求帶 credentials:include；支援 Google Sign-In 流程。",
+            "description": "在瀏覽器中執行的 React 應用。V10 使用 GET /api/auth/me 恢復 session（含 roles 資訊）；新增管理員頁面（AdminPanel）供 admin 檢視及管理使用者權限；新增菜單管理頁面（MenuManagePanel）供 staff/owner/admin 新增或修改菜單項目（版本化儲存）、展開檢視版本歷史；導覽列依 user.roles 條件式顯示管理員與管理菜單按鈕；所有 API 請求帶 credentials:include；支援 Google Sign-In 流程。",
             "documentation": {},
             "id": "5",
             "name": "SPA 前端",
@@ -197,7 +197,7 @@
           {
             "components": [
               {
-                "description": "V10 正式入口。掛載 cors 外掛、openapi 外掛；透過 auth.handler 代理大部分 /api/auth/* 請求至 Better Auth；新增自訂 GET /api/auth/me（使用 getCurrentUser 回傳含 roles 的 session）；新增 /api/admin/* 路由群組（listUsers、addRole、deleteRole），限 admin 角色存取並直接操作 authSchema（user、userRole 表）；以 requireUser() 保護 order 相關路由；schemas 全部 import 自 shared/route-schemas.ts。",
+                "description": "V10 正式入口。掛載 cors 外掛、openapi 外掛；透過 auth.handler 代理大部分 /api/auth/* 請求至 Better Auth；自訂 GET /api/auth/me（使用 getCurrentUser 回傳含 roles 的 session）；新增 GET /api/menu/:logicalId/versions 版本歷史 API；PATCH /api/menu/:id 接受 reason/createdBy 建立新版本；submitOrder 加入版本驗證（回傳 OUTDATED_ITEMS 409）；MENU_MANAGER_ROLES 擴大為 staff/owner/admin；/api/admin/* 路由群組限 admin 存取；schemas 全部 import 自 shared/route-schemas.ts。",
                 "documentation": {},
                 "id": "7",
                 "name": "路由層 (backend.ts)",
@@ -332,7 +332,7 @@
                 "technology": "TypeScript factory function"
               },
               {
-                "description": "V9 精簡版資料存取契約：auth 相關方法已移除（由 Better Auth 負責），userId 全面改為 string（對應 Better Auth string ID）。保留 menu CRUD、order CRUD 與 submitOrder。",
+                "description": "V10.2 版本化存取契約：getMenuItemVersions()、createMenuItem 接受 createdBy、updateMenuItem 接受 reason/createdBy（建立新版本）、submitOrder 驗證版本（回傳 OUTDATED_ITEMS 含過期項目清單）。",
                 "documentation": {},
                 "id": "11",
                 "name": "Store 介面 (store/Store.ts)",
@@ -343,7 +343,7 @@
                 "technology": "TypeScript interface"
               },
               {
-                "description": "Store 介面的 PostgreSQL 實作，使用 Drizzle ORM + Neon serverless pool。init() 檢查 DB 連線、從 data/store.json 種入初始菜單（若 DB 為空）、從 DB 重新載入資料至記憶體快取。submitOrder() 在訂單送出前重新快照每項餐點的最新菜單資訊（name/price/category/description/image_url）至 order_items 表，確保快照反映訂單成立時刻的資料（Snapshot Pattern）。updateOrderItem() 在更新數量時同步刷新快照。",
+                "description": "Store 介面的 PostgreSQL 實作，使用 Drizzle ORM + Neon serverless pool。init() 檢查 DB 連線、從 data/store.json 種入初始菜單（含版本欄位）、從 DB 重新載入資料至記憶體快取。createMenuItem() 自動產生 entityId/logicalId（version=1）；updateMenuItem() 建立新版本（標記舊版 isCurrentVersion=false）；submitOrder() 驗證所有 order_items 參考的 menuItemId 是否仍為當前版本，若有過期則回傳 OUTDATED_ITEMS。order_items 只存 menuItemId FK，不存快照。",
                 "documentation": {},
                 "id": "12",
                 "name": "PgStore (store/pg/PgStore.ts)",
@@ -370,7 +370,7 @@
                 "technology": "TypeScript class, Drizzle ORM"
               },
               {
-                "description": "Store 介面的 JSON 檔案備用實作。含 init()、normalizeMenuItem/normalizeUser/normalizeUserId 相容舊資料、tmp+rename 原子寫入、Promise chain persist queue。預設使用者：demo@example.com / amy@example.com（password: 1234）。",
+                "description": "Store 介面的 JSON 檔案備用實作。含 versioned CRUD（createMenuItem 產生 entityId/logicalId/version=1；updateMenuItem 建新版本）、submitOrder 版本驗證、回溯舊版 store.json 格式（巢狀 item → flat fields）。",
                 "documentation": {},
                 "id": "13",
                 "name": "JsonFileStore (store/json/JsonFileStore.ts)",
@@ -426,7 +426,7 @@
                 "technology": "@neondatabase/serverless, drizzle-orm/neon-serverless"
               },
               {
-                "description": "Drizzle 業務資料表定義，置於 PG_SCHEMA（預設 bf_v9）namespace：menu_items（自增 PK）、orders（userId 外鍵對應 Better Auth user.id）、order_items（反正規化，含 name/price/category/description/image_url）。",
+                "description": "Drizzle 業務資料表定義，置於 PG_SCHEMA（預設 bf_v10）namespace：menu_items（版本化欄位：entity_id/logical_id/version/is_current_version/supersedes/change_reason/created_by/created_at）、orders（userId 外鍵對應 Better Auth user.id）、order_items（menu_item_id FK 指向 menu_items.id，不存快照）。",
                 "documentation": {},
                 "id": "15",
                 "name": "Business Schema (db/schema.ts)",
@@ -457,7 +457,7 @@
                 "technology": "better-auth, Drizzle ORM"
               },
               {
-                "description": "Zod-based API 層 schema 集中定義：request body/params schema（createMenuItemBodySchema 等）、response envelope schema（menuListResponseSchema 等）、admin 相關 schema（adminUserSchema、adminUsersResponseSchema、addRoleBodySchema、deleteRoleParamsSchema、adminSuccessResponseSchema）、OrderResponse 型別與 toOrderResponse() 轉換函式。",
+                "description": "Zod-based API 層 schema 集中定義：request body/params schema（createMenuItemBodySchema、updateMenuItemBodySchema 含 reason 必填、menuItemVersionParamsSchema）、response envelope schema（menuListResponseSchema、menuItemVersionListResponseSchema、submitValidationErrorSchema）、admin 相關 schema（adminUserSchema、addRoleBodySchema 等）。",
                 "documentation": {},
                 "id": "17",
                 "name": "Route Schemas (shared/route-schemas.ts)",
@@ -484,7 +484,7 @@
                 "technology": "Zod, TypeScript"
               },
               {
-                "description": "V9 升級為 Zod schema 驅動：menuItemSchema、userSchema（id: string，對應 Better Auth）、sessionUserSchema（SessionUser = { id, email, name }）、orderSchema（userId: string）。TypeScript 型別全部由 z.infer<> 自動推導，消除手動維護兩份型別的問題。",
+                "description": "V10.2 Zod schema 驅動：menuItemSchema 加入 entityId/logicalId/version/isCurrentVersion/changeReason/createdBy/createdAt；新增 menuItemVersionHistorySchema；orderItemSchema 改為 flat fields（menuItemId/logicalId/menuItemName/menuItemPrice/.../qty）；sessionUserSchema 含 roles。TypeScript 型別全部由 z.infer<> 自動推導。",
                 "documentation": {},
                 "id": "18",
                 "name": "共用型別契約 (shared/contracts.ts)",
