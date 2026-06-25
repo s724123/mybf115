@@ -9,10 +9,13 @@ if (!migrationUrl) {
   );
 }
 
+const pgSchema = process.env.PG_SCHEMA ?? "bf_v9";
+
 export default defineConfig({
   schema: ["./db/schema.ts", "./db/auth-schema.ts"],
   out: "./drizzle",
   dialect: "postgresql",
+  schemaFilter: [pgSchema],
   dbCredentials: {
     url: migrationUrl,
   },

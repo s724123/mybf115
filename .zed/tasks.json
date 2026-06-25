@@ -1,0 +1,120 @@
+[
+  // ─── 開發伺服器 ──────────────────────────────────────────────────────────
+  {
+    "label": "\u25b6 dev:backend",
+    "type": "shell",
+    "command": "bun run dev:backend",
+    "problemMatcher": [],
+    "run": "background",
+    "reveal": "always",
+  },
+
+  // ─── 公開路由 ────────────────────────────────────────────────────────────
+  {
+    "label": "\ud83e\uddea test:health",
+    "type": "shell",
+    "command": "Write-Host '=== GET /health ==='; curl.exe -s http://localhost:3000/health",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:openapi",
+    "type": "shell",
+    "command": "Write-Host '=== GET /openapi ==='; curl.exe -sfo NUL -w 'HTTP %{http_code}' http://localhost:3000/openapi; Write-Host ''; Write-Host '=== GET /openapi/json ==='; curl.exe -sfo NUL -w 'HTTP %{http_code}, content-type: %{content_type}' http://localhost:3000/openapi/json",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:menu-list",
+    "type": "shell",
+    "command": "Write-Host '=== GET /api/menu (showing first 500 chars) ==='; curl.exe -s http://localhost:3000/api/menu | ForEach-Object { $_.Substring(0, [Math]::Min(500, $_.Length)) }",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:menu-versions",
+    "type": "shell",
+    "command": "Write-Host '=== GET /api/menu/1/versions ==='; curl.exe -s http://localhost:3000/api/menu/1/versions",
+    "problemMatcher": [],
+  },
+
+  // ─── \u53d7\u4fdd\u8b77\u8def\u7531\uff08\u7121 cookie \u2192 \u9810\u671f 401\uff09
+  // PowerShell: curl.exe -so NUL 將 body 丟棄，-w 只印 HTTP 狀態碼
+  {
+    "label": "\ud83e\uddea test:auth-me",
+    "type": "shell",
+    "command": "$s=curl.exe -so NUL -w '%{http_code}' http://localhost:3000/api/auth/me; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:menu-create",
+    "type": "shell",
+    "command": "$b='{\"name\":\"test\",\"price\":50,\"category\":\"\u5176\u4ed6\",\"description\":\"test\",\"image_url\":\"/imgs/test.webp\"}'; $s=curl.exe -so NUL -w '%{http_code}' -X POST http://localhost:3000/api/menu -H 'Content-Type: application/json' -d $b; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:menu-update",
+    "type": "shell",
+    "command": "$b='{\"price\":99,\"reason\":\"Zed test\"}'; $s=curl.exe -so NUL -w '%{http_code}' -X PATCH http://localhost:3000/api/menu/1 -H 'Content-Type: application/json' -d $b; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:menu-delete",
+    "type": "shell",
+    "command": "$s=curl.exe -so NUL -w '%{http_code}' -X DELETE http://localhost:3000/api/menu/999; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:orders-current",
+    "type": "shell",
+    "command": "$s=curl.exe -so NUL -w '%{http_code}' http://localhost:3000/api/orders/current; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:orders-history",
+    "type": "shell",
+    "command": "$s=curl.exe -so NUL -w '%{http_code}' http://localhost:3000/api/orders/history; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:orders-create",
+    "type": "shell",
+    "command": "$s=curl.exe -so NUL -w '%{http_code}' -X POST http://localhost:3000/api/orders -H 'Content-Type: application/json' -d '{}'; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:orders-get",
+    "type": "shell",
+    "command": "$s=curl.exe -so NUL -w '%{http_code}' http://localhost:3000/api/orders/1; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:orders-update",
+    "type": "shell",
+    "command": "$b='{\"logicalId\":1,\"qty\":2}'; $s=curl.exe -so NUL -w '%{http_code}' -X PATCH http://localhost:3000/api/orders/1 -H 'Content-Type: application/json' -d $b; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:orders-submit",
+    "type": "shell",
+    "command": "$s=curl.exe -so NUL -w '%{http_code}' -X POST http://localhost:3000/api/orders/1/submit -H 'Content-Type: application/json' -d '{}'; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:orders-list",
+    "type": "shell",
+    "command": "$s=curl.exe -so NUL -w '%{http_code}' http://localhost:3000/api/orders; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+  {
+    "label": "\ud83e\uddea test:admin-users",
+    "type": "shell",
+    "command": "$s=curl.exe -so NUL -w '%{http_code}' http://localhost:3000/api/admin/users; if($s -eq 401){'OK (401)'}else{'FAIL: expected 401, got '+$s}",
+    "problemMatcher": [],
+  },
+
+  // ─── \u6279\u6b21\u6e2c\u8a66\uff08\u547c\u53eb PowerShell \u8173\u672c\uff09
+  {
+    "label": "\ud83e\uddea test:all-routes",
+    "type": "shell",
+    "command": "pwsh -File scripts/test-all-routes.ps1",
+    "problemMatcher": [],
+  },
+]

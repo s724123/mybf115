@@ -19,7 +19,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:reset": "bun scripts/reset-database.ts"
+    "db:reset": "bun scripts/reset-database.ts",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest",
